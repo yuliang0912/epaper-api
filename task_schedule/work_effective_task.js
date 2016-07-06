@@ -10,7 +10,8 @@ var sendMsgHelper = require('../proxy/send_msg_helper');
 var handle;
 
 module.exports.start = function () {
-    var rule = new schedule.RecurrenceRule().second = 20;
+    var rule = new schedule.RecurrenceRule();
+    rule.second = process.pid % 60;
     handle = schedule.scheduleJob(rule, workRemindTask);
 }
 

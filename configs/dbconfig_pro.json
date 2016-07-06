@@ -1,10 +1,10 @@
 {
   "epaperWork": {
-    "username": "root",
-    "password": "root",
+    "username": "ciwong_sabin",
+    "password": "dianzibao2015",
     "database": "cw_epaper_work",
     "config": {
-      "host": "192.168.1.64",
+      "host": "rdsji4782vw39828axxz.mysql.rds.aliyuncs.com",
       "port": 3306,
       "dialect": "mysql",
       "timezone": "+08:00",
@@ -16,11 +16,11 @@
     }
   },
   "epaperMsg": {
-    "username": "root",
-    "password": "root",
+    "username": "ciwong_sabin",
+    "password": "dianzibao2015",
     "database": "cw_epaper_msg",
     "config": {
-      "host": "192.168.1.64",
+      "host": "rdsji4782vw39828axxz.mysql.rds.aliyuncs.com",
       "port": 3306,
       "dialect": "mysql",
       "timezone": "+08:00",

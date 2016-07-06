@@ -22,7 +22,7 @@ app.use(require('./lib/api_auto_route')(app))
 require('koa-validate')(app)
 require('./proxy/rabbit_helper')(config.msgRabbitMq)
 
-if (config.env === 'development' || (process.pid % 16) == 10) {
+if (config.env === 'development' || (process.pid % 16) < 5) {
     require('./task_schedule/work_effective_task').start();
 }
 
