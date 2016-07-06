@@ -1,0 +1,35 @@
+{
+  "name": "epaper-api",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Generated with koa-mvc",
+  "dependencies": {
+    "amqp": "^0.2.6",
+    "bluebird": "^3.4.0",
+    "co": "3.x.x",
+    "koa": "0.x.x",
+    "koa-bodyparser": "1.x.x",
+    "koa-compress": "^1.0.9",
+    "koa-favicon": "^1.2.1",
+    "koa-router": "3.x.x",
+    "koa-static": "1.x.x",
+    "koa-validate": "^1.0.6",
+    "mysql": "^2.11.1",
+    "node-schedule": "^1.1.1",
+    "q": "^1.4.1",
+    "sequelize": "^3.23.3",
+    "string-format": "^0.5.0",
+    "thunkify": "2.x.x",
+    "underscore": "^1.8.3"
+  },
+  "devDependencies": {
+    "debug": "1.x.x"
+  },
+  "engines": {
+    "node": ">= 0.11.9"
+  },
+  "scripts": {
+    "start": "node --harmony app",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
+}
