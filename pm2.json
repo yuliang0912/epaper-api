@@ -1,13 +1,16 @@
 {
   "apps": [
     {
-      "name": "epage-work-api",
-      "script": "app.js",
+      "name": "epaper-work-api",
+      "script": "app.js ",
       "node_args": "-harmony",
       "watch": true,
       "exec_mode": "cluster",
       "instances": 16,
-      "log_date_format": "YYYY-MM-DD HH:mm Z"
+      "log_date_format": "YYYY-MM-DD HH:mm Z",
+      "env": {
+        "NODE_ENV": "production"
+      }
     }
   ]
 }

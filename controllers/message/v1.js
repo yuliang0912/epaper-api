@@ -102,10 +102,11 @@ module.exports = {
     },
     //根据发送者ID获取消息列表
     getMsgsBySenderId: function *() {
-        var page = this.getQueryString("page", parseInt);
-        var pageSize = this.getQueryString("pageSize", parseInt);
-        var brandId = this.getQueryString("brandId", parseInt);
-        var senderId = this.getQueryString("senderId", parseInt);
+        var page = this.checkQuery('page').toInt().value;
+        var pageSize = this.checkQuery('pageSize').toInt().value;
+        var brandId = this.checkQuery('brandId').toInt().value;
+        var senderId = this.checkQuery('senderId').toInt().value;
+        this.errors && this.validateError();
 
         var sqlParams = {
             brandId: brandId,
@@ -158,10 +159,11 @@ module.exports = {
     },
     //根据消息类型ID获取消息列表
     getMsgsByType: function *() {
-        var page = this.getQueryString("page", parseInt);
-        var pageSize = this.getQueryString("pageSize", parseInt);
-        var msgType = this.getQueryString("msgType", parseInt);
-        var brandId = this.getQueryString("brandId", parseInt);
+        var page = this.checkQuery('page').toInt().value;
+        var pageSize = this.checkQuery('pageSize').toInt().value;
+        var brandId = this.checkQuery('brandId').toInt().value;
+        var msgType = this.checkQuery('msgType').toInt().value;
+        this.errors && this.validateError();
 
         var sqlParams = {
             brandId: brandId,
@@ -213,18 +215,13 @@ module.exports = {
     },
     //设置消息为已读状态
     setRead: function *() {
-        var msgIds = this.getQueryString("msgIds", "");
-
-        if (!/^\d{1,}$/.test(msgIds.replace(/\,/g, ""))) {
-            return this.error("参数msgIds格式错误", 101);
-        }
-
-        var msgList = msgIds.split(',').map(item=>parseInt(item));
+        var msgIds = this.checkQuery('msgIds').notEmpty().match(/^\d+(,\d+)*$/).value;
+        this.errors && this.validateError();
 
         yield this.dbContents.messageSequelize.msgReceiver.update({msgStatus: 1}, {
             where: {
                 receiverId: this.request.userId,
-                msgId: {$in: msgList}
+                msgId: {$in: msgIds.split(',').map(m=>parseInt(m))}
             }
         }).then(data=> {
             this.success(data[0] > 0);

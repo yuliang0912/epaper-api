@@ -17,12 +17,14 @@ app.use(require('koa-favicon')(__dirname + '/web/favicon.ico'))
 app.use(require('koa-static')(config.static.directory, config.static))
 app.use(require('koa-compress')())
 app.use(require('./lib/api_response')())
-app.use(require('./lib/api_auto_convert_params'))
 app.use(require('koa-bodyparser')(config.bodyparser))
 app.use(require('./lib/api_auto_route')(app))
 require('koa-validate')(app)
 require('./proxy/rabbit_helper')(config.msgRabbitMq)
-require('./task_schedule/work_effective_task').start();
+
+if (config.env === 'development' || (process.pid % 16) == 10) {
+    require('./task_schedule/work_effective_task').start();
+}
 
 app.on('error', function (err) {
     log.error('server error', err);
