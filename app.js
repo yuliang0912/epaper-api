@@ -20,20 +20,24 @@ app.use(require('./lib/api_response')())
 app.use(require('koa-bodyparser')(config.bodyparser))
 app.use(require('./lib/api_auto_route')(app))
 require('koa-validate')(app)
-require('./proxy/rabbit_helper')(config.msgRabbitMq)
-
-if (config.env === 'development' || (process.pid % 16) < 5) {
-    require('./task_schedule/work_effective_task').start();
-}
+require('./proxy/message/rabbit_helper')(config.msgRabbitMq)
+require('./task_schedule/work_effective_task').start();
 
 app.on('error', function (err) {
     log.error('server error', err);
 });
 
+require('./lib/api_utils').createInt16Number();
+
+
 require('./configs/database')().then(dbContents=> {
     app.context.dbContents = dbContents;
+    dbContents.workSequelize.workBatch.findOne({where: {batchId: {$gt: 1}}}).then(data=> {
+        console.log('cw_epaper_work has connectioned!')
+    });
     console.log("database initialized");
 }).catch(err=> {
+    console.log(err);
     console.log("database initialize faild");
 });
 

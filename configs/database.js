@@ -29,6 +29,7 @@ var workDbContents = function () {
         workBatch: require('../models/epaperwork/workbatch')(workSequelize),
         workMembers: require('../models/epaperwork/workmembers')(workSequelize),
         workContents: require('../models/epaperwork/workcontents')(workSequelize),
+        workAnswers: require('../models/epaperwork/workanswers')(workSequelize),
     }
     InitDbModels(models);
     return Object.assign(workSequelize, models);

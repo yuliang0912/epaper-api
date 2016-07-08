@@ -2,11 +2,11 @@
   "apps": [
     {
       "name": "epaper-work-api",
-      "script": "app.js ",
+      "script": "app.js",
       "node_args": "-harmony",
       "watch": true,
       "exec_mode": "cluster",
-      "instances": 16,
+      "instances": 2,
       "log_date_format": "YYYY-MM-DD HH:mm Z",
       "env": {
         "NODE_ENV": "production"

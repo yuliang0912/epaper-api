@@ -7,7 +7,7 @@ var _ = require('underscore');
 var moment = require('moment');
 var format = require('string-format');
 var Sequelize = require('sequelize');
-var sendMsgHelper = require('../../proxy/send_msg_helper');
+var sendMsgHelper = require('../../proxy/message/send_msg_helper');
 
 //目前后台只能针对用户ID进行推送.前期只实现这一部分功能,后期考虑针对角色进行推送
 module.exports = {

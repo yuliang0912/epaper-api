@@ -6,7 +6,7 @@
 var moment = require('moment');
 var schedule = require('node-schedule');
 var dbContents = require('../configs/database').getDbContents();
-var sendMsgHelper = require('../proxy/send_msg_helper');
+var sendMsgHelper = require('../proxy/message/send_msg_helper');
 var handle;
 
 module.exports.start = function () {

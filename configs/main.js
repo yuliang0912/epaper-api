@@ -29,8 +29,8 @@ module.exports = {
     },
     msgRabbitMq: {
         connOptions: {
-            host: '121.14.117.225',
-            port: 5672,
+            host: '121.14.117.241',
+            port: 5670,
             login: "cwmq_admin",
             password: "L0v3@4dmin_cwmq",
             authMechanism: 'AMQPLAIN',

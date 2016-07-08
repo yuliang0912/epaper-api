@@ -4,7 +4,7 @@
 "use strict"
 
 var msgHelper = require('./rabbit_helper');
-var msgSequelize = require('../configs/database').getDbContents().messageSequelize;
+var msgSequelize = require('../../configs/database').getDbContents().messageSequelize;
 
 module.exports.sendMsg = function (messageModel, messageContent, receiverIdList) {
     return new Promise(function (resolve, reject) {

@@ -19,14 +19,12 @@ module.exports = function (options) {
             queue.bind(exchange, '', function () {
                 exchangeFactory['exchange.msg'] = exchange;
             });
-            /*
-             queue.subscribe(function (message, header, deliveryInfo) {
-             console.log("消费消息");
-             if (message.data) {
-             console.log(message.data.toString());
-             }
-             });
-             */
+            // queue.subscribe(function (message, header, deliveryInfo) {
+            //     console.log("消费消息");
+            //     if (message.data) {
+            //         console.log(message.data.toString());
+            //     }
+            // });
         });
         console.log('rabbitMQ connection success!');
     });

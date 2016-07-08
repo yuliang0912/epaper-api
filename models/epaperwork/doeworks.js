@@ -60,7 +60,8 @@ module.exports = function (workSequelize) {
                 type: Sequelize.BIGINT
             },
             workScore: {
-                type: Sequelize.DECIMAL(6, 2)
+                type: Sequelize.DECIMAL(6, 2),
+                defaultValue: 100
             },
             actualScore: {
                 type: Sequelize.DECIMAL(6, 2)
@@ -74,10 +75,12 @@ module.exports = function (workSequelize) {
                 allowNull: false
             },
             comment: {
-                type: Sequelize.STRING
+                type: Sequelize.STRING,
+                defaultValue: ''
             },
             commentType: {
                 type: Sequelize.INTEGER,
+                defaultValue: 1
             },
             workStatus: {
                 type: Sequelize.INTEGER,
@@ -87,9 +90,11 @@ module.exports = function (workSequelize) {
             },
             delStatus: {
                 type: Sequelize.INTEGER,
+                defaultValue: 0
             },
             codeId: {
                 type: Sequelize.INTEGER,
+                defaultValue: 0
             },
             insteadUserId: {
                 type: Sequelize.INTEGER,

@@ -2,6 +2,7 @@
 
 var _ = require('underscore');
 var Sequelize = require('sequelize');
+var submitWork = require('./../../proxy/epaperwork/submit_work');
 
 function sleep(sleepTime) {
     for (var start = +new Date; +new Date - start <= sleepTime;) {
@@ -241,6 +242,45 @@ module.exports = {
                 return item;
             });
             this.success(result);
+        })
+    },
+    //提交线上作答作业
+    submitWork: function *() {
+        this.allow('POST').allowJson();
+        var workId = this.checkBody('workId').isNumeric().default(0).value;
+        var cid = this.checkBody('cId').isNumeric().value;
+        var packageId = this.checkBody('packageId').toInt().value;
+        var moduleId = this.checkBody('moduleId').in([123, 124]).toInt().value;
+        var versionId = this.checkBody('versionId').isNumeric().value;
+        var resourceName = this.checkBody('resourceName').notEmpty().value;
+        var parentVersionId = this.checkBody('parentVersionId').isNumeric().value;
+        var resourceType = this.checkBody('resourceType').isUUID().value;
+        var workLong = this.checkBody('workLong').toInt().value;
+        var doWorkPackageUrl = this.checkBody('doWorkPackageUrl').isUrl().value;
+        var actualScore = this.checkBody('actualScore').toFloat().value;
+        var brandId = this.checkBody('brandId').toInt().value;
+        var classId = this.checkBody('classId').toInt().value;
+        var workAnswers = this.checkBody('workAnswers').toJson().value;
+
+        this.errors && this.validateError();
+        if (!Array.isArray(workAnswers) || workAnswers.length < 1) {
+            this.error('workAnswers数据格式错误!', 101)
+        }
+
+        var doEwork = {
+            workId, cid, packageId, moduleId, versionId, resourceName, parentVersionId, resourceType,
+            workLong, doWorkPackageUrl, actualScore, brandId, classId,
+            workScore: 100,
+            workStatus: 1,
+        };
+        doEwork.userId = doEwork.insteadUserId = this.request.userId;
+        doEwork.userName = doEwork.insteadUserName = "yuliang";
+
+        //提交视频讲解
+        yield submitWork(doEwork, workAnswers).then(doWorkId=> {
+            this.success(doWorkId.toString());
+        }).catch(err=> {
+            this.error(err)
         })
     }
 }
