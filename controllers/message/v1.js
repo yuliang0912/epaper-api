@@ -35,7 +35,7 @@ module.exports = {
         var messageContent = {
             content, attach
         };
-        yield sendMsgHelper.sendMsg(messageModel, messageContent, receiverIdList).then(this.success);
+        yield sendMsgHelper.sendMsg(messageModel, messageContent, receiverIdList).then(this.success).catch(this.error)
     },
     //分组获取未读消息数量
     getNoReadMsgCount: function *() {

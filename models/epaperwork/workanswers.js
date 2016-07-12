@@ -14,12 +14,12 @@ module.exports = function (workSequelize) {
                 primaryKey: true
             },
             submitContent: {
-                type: Sequelize.STRING,
+                type: Sequelize.JSON,
                 allowNull: false,
             },
             correctContent: {
-                type: Sequelize.STRING,
-                defaultValue: ''
+                type: Sequelize.JSON,
+                defaultValue: []
             },
             correctDate: {
                 type: Sequelize.DATE,

@@ -86,7 +86,7 @@ module.exports = function (workSequelize) {
             tableName: "eworks",
             classMethods: {
                 associate: function (models) {
-                    this.belongsTo(models.workBatch, {foreignKey: 'batchId'}); // N:1
+                    this.belongsTo(models.workBatch, {foreignKey: 'batchId'}); // 1:1
                     this.hasMany(models.doEworks, {foreignKey: 'workId'}); //1:N
                     this.hasMany(models.workMembers, {foreignKey: 'workId'}); //1:N
                 }
