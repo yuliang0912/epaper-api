@@ -21,13 +21,13 @@ module.exports.sendMsg = function (messageModel, messageContent, receiverIdList)
                 return Promise.all([contentFunc, receiverFunc])
             }).then(data=> {
                 return msgId;
-            });
+            })
         }).then(function (msgId) {
             resolve(msgId);
             //此处异步发送MQ,无需等待执行结果
             msgHelper.publishMsg(msgId.toString()).then(isSuccess=> {
-                msgSequelize.msgMain.update({status: isSuccess ? 2 : 3}, {where: {msgId: msgId}});
-            });
+                msgSequelize.msgMain.update({status: isSuccess ? 2 : 3}, {where: {msgId: msgId}})
+            })
         }).catch(reject)
-    });
+    })
 }

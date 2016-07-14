@@ -27,6 +27,7 @@ module.exports = {
         if (!Array.isArray(receiverIdList) || receiverIdList.length < 1) {
             this.error('receiverIdList格式错误')
         }
+
         this.errors && this.validateError();
 
         var messageModel = {

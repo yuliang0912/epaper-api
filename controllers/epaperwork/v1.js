@@ -335,7 +335,7 @@ module.exports = {
                 attributes: [],
                 model: this.dbContents.workSequelize.eworks,
                 where: {publishUserId: this.request.userId}
-            }],
+            }]
         })
         if (!doWorkInfo) {
             this.error('未找到作业或无批改权限', 102);
@@ -368,7 +368,7 @@ module.exports = {
             this.success(1)
             doWorkInfo.actualScore = actualScore;
             doWorkInfo.doWorkId = doWorkId;
-            workHelper.sendCorrrectMsg(doWorkInfo).then(console.log).catch(console.log)
+            workHelper.sendCorrrectMsg(doWorkInfo).catch(console.log)
         }).catch(this.error)
     }
 }
