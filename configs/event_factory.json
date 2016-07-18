@@ -1,0 +1,44 @@
+[
+  {
+    "name": "workEvent",
+    "description": "教辅云作业模块相关事件中心",
+    "requireFilePath": "./work_event_handlers.js",
+    "events": [
+      {
+        "name": "publishWork",
+        "eventHandler": [
+          "publishWorkHandler"
+        ],
+        "description": "布置作业事件"
+      },
+      {
+        "name": "delPublishWork",
+        "eventHandler": [
+          "deleteWorkHandler"
+        ],
+        "description": "老师删除已经布置的作业事件"
+      },
+      {
+        "name": "commentWork",
+        "eventHandler": [
+          "commentWorkHandler"
+        ],
+        "description": "老师点评作业事件"
+      },
+      {
+        "name": "workEffective",
+        "eventHandler": [
+          "workEffectiveHandler"
+        ],
+        "description": "作业即将过期提醒"
+      },
+      {
+        "name": "corrrectWork",
+        "eventHandler": [
+          "corrrectWorkHandler"
+        ],
+        "description": "批改作业事件"
+      }
+    ]
+  }
+]

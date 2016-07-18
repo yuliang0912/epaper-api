@@ -8,6 +8,9 @@ var msgSequelize = require('../../configs/database').getDbContents().messageSequ
 
 module.exports.sendMsg = function (messageModel, messageContent, receiverIdList) {
     return new Promise(function (resolve, reject) {
+        if (!messageModel || !messageContent || receiverIdList.length < 1) {
+            return resolve();
+        }
         msgSequelize.transaction(function (trans) {
             let msgId = 0;
             return msgSequelize.msgMain.create(messageModel, {
@@ -27,6 +30,8 @@ module.exports.sendMsg = function (messageModel, messageContent, receiverIdList)
             //此处异步发送MQ,无需等待执行结果
             msgHelper.publishMsg(msgId.toString()).then(isSuccess=> {
                 msgSequelize.msgMain.update({status: isSuccess ? 2 : 3}, {where: {msgId: msgId}})
+            }).catch(err=> {
+                msgSequelize.msgMain.update({status: 3}, {where: {msgId: msgId}})
             })
         }).catch(reject)
     })

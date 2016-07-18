@@ -36,7 +36,7 @@ module.exports = function (workSequelize) {
             freezeTableName: true,
             tableName: "eworkmembers",
             classMethods: {
-                associate: function (models) { // N:1
+                associate: function (models) { // 1:1
                     this.belongsTo(models.eworks, {foreignKey: 'workId'});
                 }
             }

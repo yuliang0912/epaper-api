@@ -9,7 +9,7 @@ module.exports = function (workSequelize) {
         'doeworks',
         {
             doWorkId: {
-                type: Sequelize.BIGINT,
+                type: Sequelize.STRING,
                 primaryKey: true
             },
             userId: {
@@ -57,7 +57,7 @@ module.exports = function (workSequelize) {
                 allowNull: false
             },
             workId: {
-                type: Sequelize.BIGINT
+                type: Sequelize.STRING
             },
             workScore: {
                 type: Sequelize.DECIMAL(6, 2),

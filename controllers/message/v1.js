@@ -45,7 +45,7 @@ module.exports = {
 
         let sql = "SELECT senderId,COUNT(*) as msgCount,MAX(msgmain.msgId) as maxMsgId FROM msgreceiver \
                  INNER JOIN msgmain on msgreceiver.msgId = msgmain.msgId\
-                 WHERE msgStatus = 0 AND receiverId = :receiverId AND msgmain.`status` = 0\
+                 WHERE msgStatus = 0 AND receiverId = :receiverId AND msgmain.`status` <> 1\
                  AND brandId = :brandId  GROUP BY senderId";
 
         yield this.dbContents.messageSequelize.query(sql, {
@@ -68,7 +68,7 @@ module.exports = {
         let sql = "SELECT * FROM(\
                     SELECT msgmain.*,msgreceiver.msgStatus FROM msgmain\
                     LEFT JOIN msgreceiver on msgreceiver.msgId = msgmain.msgId\
-                    WHERE receiverId = :receiverId AND msgmain.`status` = 0\
+                    WHERE receiverId = :receiverId AND msgmain.`status` <> 1\
                     AND brandId = :brandId ORDER BY msgmain.msgId DESC\
                 ) temp GROUP BY senderId ORDER BY msgId DESC";
 
@@ -83,7 +83,7 @@ module.exports = {
 
         sql = "SELECT senderId,COUNT(*) as msgCount FROM msgreceiver\
              INNER JOIN msgmain on msgreceiver.msgId = msgmain.msgId\
-             WHERE msgStatus = 0 AND receiverId = :receiverId AND msgmain.`status` = 0\
+             WHERE msgStatus = 0 AND receiverId = :receiverId AND msgmain.`status` <> 1\
              AND brandId = :brandId GROUP BY senderId";
 
         var noReadList = yield this.dbContents.messageSequelize.query(sql, {
@@ -121,7 +121,7 @@ module.exports = {
                         INNER JOIN msgmain ON msgmain.msgId = msgreceiver.msgId\
                         INNER JOIN msgcontent ON msgcontent.msgId = msgreceiver.msgId\
                         WHERE msgreceiver.receiverId = :receiverId\
-                        AND msgmain.senderId = :senderId AND msgmain.status = 0\
+                        AND msgmain.senderId = :senderId AND msgmain.status <> 1\
                         AND brandId = :brandId";
 
         let sqlPage = format(baseSql, " count(*)  AS msgCount ");
@@ -178,7 +178,7 @@ module.exports = {
                         INNER JOIN msgmain ON msgmain.msgId = msgreceiver.msgId\
                         INNER JOIN msgcontent ON msgcontent.msgId = msgreceiver.msgId\
                         WHERE msgreceiver.receiverId = :receiverId\
-                        AND msgmain.msgType = :msgType AND msgmain.status = 0\
+                        AND msgmain.msgType = :msgType AND msgmain.status <> 1\
                         AND msgmain.brandId = :brandId";
 
         let sqlPage = format(baseSql, "count(*) AS msgCount ");

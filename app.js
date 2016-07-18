@@ -27,14 +27,8 @@ app.on('error', function (err) {
     log.error('server error', err);
 });
 
-require('./lib/api_utils').createInt16Number();
-
-
 require('./configs/database')().then(dbContents=> {
     app.context.dbContents = dbContents;
-    dbContents.workSequelize.workBatch.findOne({where: {batchId: {$gt: 1}}}).then(data=> {
-        console.log('cw_epaper_work has connectioned!')
-    });
     console.log("database initialized");
 }).catch(err=> {
     console.log(err);

@@ -3,8 +3,25 @@
 var _ = require('underscore');
 var Sequelize = require('sequelize');
 var workHelper = require('./../../proxy/epaperwork/work_helper');
+var eventFactory = require('./../../proxy/event_factory/event_factory')
 
 module.exports = {
+    //作业相关事件触发器
+    workEventTriggler: function *() {
+        this.allow('POST').allowJson();
+        var eventName = this.checkBody('eventName').notEmpty().value;
+        var eventArgs = this.checkBody('eventArgs').notEmpty().value;
+        this.errors && this.validateError();
+
+        if (!eventFactory.workEvent) {
+            this.error('作业事件已从配置中取消或者更改', 101)
+        }
+        if (!eventFactory.workEvent.eventNameArray.some(t=>t === eventName)) {
+            this.error('未找到事件' + eventName, 101)
+        }
+        eventFactory.workEvent.emit(eventName, eventArgs)
+        this.success(1)
+    },
     //按批次获取布置的作业
     getPublishWorkRecords: function *() {
         var page = this.checkQuery('page').toInt().gt(0).value;
@@ -160,7 +177,7 @@ module.exports = {
             raw: true,
             attributes: [[Sequelize.literal('CONCAT(doWorkId)'), 'doWorkId'], 'userId', 'userName', 'packageId',
                 'cId', 'moduleId', 'versionId', 'resourceName', 'parentVersionId', 'resourceType', 'submitDate',
-                'doWorkPackageUrl', 'workScore', 'actualScore', 'workLong', 'classId', 'submitCount'],
+                'doWorkPackageUrl', 'workScore', 'actualScore', 'workStatus', 'workLong', 'classId', 'submitCount'],
             where: {
                 classId, brandId, packageId, cid,
                 workId: 0,
@@ -329,8 +346,7 @@ module.exports = {
         }
         var doWorkInfo = yield this.dbContents.workSequelize.doEworks.findById(doWorkId, {
             raw: true,
-            attributes: [[Sequelize.literal('CONCAT(doeworks.workId)'), 'workId'], 'moduleId', 'brandId',
-                'resourceName', 'userId', 'userName'],
+            attributes: ['moduleId'],
             include: [{
                 attributes: [],
                 model: this.dbContents.workSequelize.eworks,
@@ -366,10 +382,36 @@ module.exports = {
             return Promise.all([updateDoeworksFunc, updateAnswerFunc])
         }).then(t=> {
             this.success(1)
-            doWorkInfo.actualScore = actualScore;
-            doWorkInfo.doWorkId = doWorkId;
-            workHelper.sendCorrrectMsg(doWorkInfo).catch(console.log)
+            eventFactory.workEvent && eventFactory.workEvent.emit('corrrectWork', doWorkId)
         }).catch(this.error)
+    },
+    //获取首次提交的自主练习成绩
+    getFirstLearnSelfScore: function *() {
+        var brandId = this.checkQuery('brandId').toInt().value;
+        var versionId = this.checkQuery('versionId').isNumeric().value;
+        var packageId = this.checkQuery('packageId').toInt().gt(0).value;
+        var resourceType = this.checkQuery('resourceType').isUUID().value;
+        var cid = this.checkQuery('cid').notEmpty().value;
+        var classId = this.checkQuery('classId').toInt().gt(0).value;
+        this.errors && this.validateError();
+
+        yield this.dbContents.workSequelize.doEworks.findAll({
+            attributes: ['userId', 'userName', 'actualScore'],
+            where: {brandId, versionId, packageId, resourceType, cid, classId, submitCount: 1}
+        }).then(this.success)
+    },
+    //获取首次提交的作业的成绩
+    getFirstWorkScore: function *() {
+        var versionId = this.checkQuery('versionId').isNumeric().value;
+        var resourceType = this.checkQuery('resourceType').isUUID().value;
+        var cid = this.checkQuery('cid').notEmpty().value;
+        var workId = this.checkQuery('workId').isNumeric().value;
+        this.errors && this.validateError();
+
+        yield this.dbContents.workSequelize.doEworks.findAll({
+            attributes: ['userId', 'userName', 'actualScore'],
+            where: {versionId, resourceType, cid, workId, submitCount: 1}
+        }).then(this.success)
     }
 }
 

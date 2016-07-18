@@ -2,7 +2,7 @@
   "name": "epaper-api",
   "version": "0.0.1",
   "private": true,
-  "description": "Generated with koa-mvc",
+  "description": "习网教辅云作业相关API",
   "dependencies": {
     "amqp": "^0.2.6",
     "bluebird": "^3.4.0",

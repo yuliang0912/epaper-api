@@ -6,7 +6,6 @@
 var co = require('co')
 var Sequelize = require('sequelize')
 var utils = require('../../lib/api_utils')
-var sendMsgHelper = require('../message/send_msg_helper');
 var workSequelize = require('../../configs/database').getDbContents().workSequelize
 
 module.exports.submitWork = function (doWork, workAnswers) {
@@ -20,31 +19,6 @@ module.exports.submitWork = function (doWork, workAnswers) {
             throw new Error('不被支持的作业.moduleId=' + doWork.moduleId)
     }
 }
-
-//发送批改作业通知
-module.exports.sendCorrrectMsg = function (doEworks) {
-    return new Promise(function (resolve, reject) {
-        var messageModel = {
-            title: "批改作业",
-            msgType: 14,
-            brandId: doEworks.brandId,
-            senderId: 1,
-            senderName: "作业系统",
-            msgIntr: "老师批改了你的作业\"" + doEworks.resourceName + "\",作业得分" + doEworks.actualScore + "!"
-        };
-        var receiverIdList = [{receiverId: doEworks.userId, receiverName: doEworks.userName}];
-        var messageContent = {
-            content: {
-                workId: doEworks.workId.toString(),
-                doWorkId: doEworks.doWorkId.toString(),
-                resoruceName: doEworks.resourceName
-            },
-            attach: doEworks.doWorkId
-        };
-        sendMsgHelper.sendMsg(messageModel, messageContent, receiverIdList).then(resolve).catch(reject)
-    });
-}
-
 
 //提交在线作答作业/自主学习(自主练习接受批改前最后一次的,作业接受第一次的)
 function submitOnlinePaperWork(doWork, workAnswers) {
@@ -120,6 +94,22 @@ function submitVideoExplainWork(doWork, workAnswers) {
                     parentVersionId: doWork.parentVersionId,
                     resourceType: doWork.resourceType,
                     doWorkId: {$ne: doWork.doWorkId}
+                }
+            })
+            workSequelize.query("UPDATE doeworks SET submitCount =\
+            (SELECT count FROM (SELECT COUNT(*) as count FROM doeworks WHERE workId = :workId AND \
+            packageId = :packageId AND cid = :cid AND brandId = :brandId AND versionId = :versionId AND\
+            parentVersionId = :parentVersionId AND resourceType = :resourceType) t)\
+            WHERE doWorkId = " + doWork.doWorkId, {
+                type: Sequelize.QueryTypes.UPDATE,
+                replacements: {
+                    workId: doWork.workId,
+                    brandId: doWork.brandId,
+                    packageId: doWork.packageId,
+                    cid: doWork.cid,
+                    versionId: doWork.versionId,
+                    parentVersionId: doWork.parentVersionId,
+                    resourceType: doWork.resourceType
                 }
             })
         }).catch(reject)

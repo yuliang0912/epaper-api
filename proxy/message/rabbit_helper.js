@@ -1,6 +1,7 @@
 /**
  * Created by Yuliang on 2016/6/29 0029.
  */
+
 "use strict"
 
 var amqp = require('amqp');
