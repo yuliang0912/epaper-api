@@ -31,6 +31,7 @@ module.exports.sendMsg = function (messageModel, messageContent, receiverIdList)
             msgHelper.publishMsg(msgId.toString()).then(isSuccess=> {
                 msgSequelize.msgMain.update({status: isSuccess ? 2 : 3}, {where: {msgId: msgId}})
             }).catch(err=> {
+                console.log(err);
                 msgSequelize.msgMain.update({status: 3}, {where: {msgId: msgId}})
             })
         }).catch(reject)

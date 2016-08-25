@@ -4,13 +4,14 @@
 
 "use strict"
 
+var co = require('co')
 var apiUtils = require('../../lib/api_utils')
 var dbContents = require('../../configs/database').getDbContents()
 var sendMsgHelper = require('../message/send_msg_helper')
 var msgEnum = require('../message/message_enum')
 
 const workSenderId = 1
-const workSenderName = '作业系统'
+const workSenderName = '作业消息'
 
 //发布作业事件
 module.exports.publishWorkHandler = function (batchId) {
@@ -23,7 +24,7 @@ module.exports.publishWorkHandler = function (batchId) {
         })
         var workMembers = dbContents.workSequelize.workMembers.findAll({
             raw: true,
-            attributes: ['workId', ['userId', 'receiverId'], ['userName', 'receiverName']],
+            attributes: [[dbContents.Sequelize.literal('CONCAT(ework.workId)'), 'workId'], ['userId', 'receiverId'], ['userName', 'receiverName']],
             include: [{
                 attributes: [],
                 model: dbContents.workSequelize.eworks,
@@ -36,20 +37,20 @@ module.exports.publishWorkHandler = function (batchId) {
                 return resolve()
             }
             let messageModel = {
-                title: "作业提醒",
+                title: "作业通知",
                 msgType: msgEnum.msgTypeEnum.workNotice,
                 senderId: workSenderId,
                 senderName: workSenderName,
                 brandId: batch.brandId,
                 receiverType: msgEnum.receiverTypeEnum.toIndividual,
-                msgIntr: "老师还没有收到你的作业,请尽快提交!"
+                msgIntr: "亲爱的同学,你收到新的作业了!"
             }
             let messageContent = {
                 content: {
                     workName: batch.workName,
                     publishDate: batch.publishDate.toUnix(),
                     effectiveDate: batch.effectiveDate.toUnix(),
-                    workContent: results[1] || ''
+                    workContent: results[1].workContent || ''
                 }
             }
             let tasks = results[2].groupBy('workId').map(work=> {
@@ -96,7 +97,7 @@ module.exports.deleteWorkHandler = function (workId) {
                     workName: eworkModel.workName,
                     publishDate: eworkModel.publishDate.toUnix(),
                     effectiveDate: eworkModel.effectiveDate.toUnix(),
-                    workContent: results[1] || ''
+                    workContent: results[1].workContent || ''
                 },
                 attach: workId
             }
@@ -162,7 +163,7 @@ module.exports.workEffectiveHandler = function (batchIdList) {
 module.exports.corrrectWorkHandler = function (doWorkId) {
     return new Promise(function (resolve, reject) {
         dbContents.workSequelize.doEworks.findById(doWorkId, {raw: true}).then(doEwork=> {
-            if (!doEwork) {
+            if (!doEwork || doEwork.workId === 0) {
                 return resolve()
             }
             let messageModel = {
@@ -192,7 +193,7 @@ module.exports.corrrectWorkHandler = function (doWorkId) {
 module.exports.commentWorkHandler = function (doWorkId) {
     return new Promise(function (resolve, reject) {
         dbContents.workSequelize.doEworks.findById(doWorkId, {raw: true}).then(doEwork=> {
-            if (!doEwork) {
+            if (!doEwork || doEwork.workId === 0) {
                 return resolve()
             }
             let messageModel = {
@@ -217,3 +218,66 @@ module.exports.commentWorkHandler = function (doWorkId) {
         }).then(resolve).catch(reject)
     })
 }
+
+//检查作业事件
+module.exports.checkWorkHandler = function (checkWorkInfo) {
+    return new Promise(function (resolve, reject) {
+        let messageContent = {
+            attach: checkWorkInfo.workId
+        }
+        dbContents.workSequelize.eworks.findById(checkWorkInfo.workId, {raw: true}).then(workInfo=> {
+            checkWorkInfo.brandId = workInfo.brandId;
+            messageContent.content = {
+                workId: workInfo.workId,
+                workName: workInfo.workName,
+                publishDate: workInfo.publishDate.toUnix(),
+                effectiveDate: workInfo.effectiveDate.toUnix(),
+            }
+            return dbContents.workSequelize.workContents.findOne({
+                raw: true,
+                attributes: [[dbContents.Sequelize.literal('GROUP_CONCAT(resourceName)'), 'workContent']],
+                where: {workId: checkWorkInfo.workId}
+            })
+        }).then(workContent=> {
+            messageContent.content.workContent = workContent.workContent
+            return dbContents.workSequelize.workMembers.findAll({
+                raw: true,
+                attributes: [['userId', 'receiverId'], ['userName', 'receiverName']],
+                where: {workId: checkWorkInfo.workId, status: 0}
+            })
+        }).then(userList=> {
+            let messageModel = {
+                title: "作业提醒",
+                brandId: checkWorkInfo.brandId,
+                msgType: msgEnum.msgTypeEnum.workRemind,
+                senderId: workSenderId,
+                senderName: workSenderName,
+                receiverType: msgEnum.receiverTypeEnum.toIndividual,
+                msgIntr: "老师还没有收到你的作业,请尽快提交!"
+            }
+            return sendMsgHelper.sendMsg(messageModel, messageContent, userList)
+        }).then(()=> {
+            return checkWorkInfo.addDoWorkIds.length > 0 ? dbContents.workSequelize.doEworks.findAll({
+                raw: true,
+                attributes: [['userId', 'receiverId'], ['userName', 'receiverName']],
+                where: {doWorkId: {$in: checkWorkInfo.addDoWorkIds}}
+            }) : []
+        }).then(userList=> {
+            let messageModel = {
+                title: "检查作业",
+                brandId: checkWorkInfo.brandId,
+                msgType: msgEnum.msgTypeEnum.workCheck,
+                senderId: workSenderId,
+                senderName: workSenderName,
+                receiverType: msgEnum.receiverTypeEnum.toIndividual,
+                msgIntr: "老师已经检查了你的作业!"
+            }
+            return sendMsgHelper.sendMsg(messageModel, messageContent, userList)
+        }).then(resolve).catch(reject)
+    })
+}
+
+//测试同步异步事件
+module.exports.testEventHandler = co(function *() {
+    yield dbContents.workSequelize.eworks.findById('4611689331361501573', {raw: true})
+})

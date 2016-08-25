@@ -4,6 +4,7 @@ var _ = require('underscore');
 var Sequelize = require('sequelize');
 var workHelper = require('./../../proxy/epaperwork/work_helper');
 var eventFactory = require('./../../proxy/event_factory/event_factory')
+var utils = require('../../lib/api_utils')
 
 module.exports = {
     //作业相关事件触发器
@@ -31,9 +32,10 @@ module.exports = {
 
         var batchList = yield this.dbContents.workSequelize.workBatch.findAndCount({
             raw: true,
-            where: {brandId: brandId},
+            where: {brandId: brandId, publishUserId: this.request.userId, status: 0},
             offset: (page - 1) * pageSize,
             limit: pageSize,
+            order: 'batchId DESC'
         });
 
         var workList = [], workContentList = [];
@@ -41,10 +43,10 @@ module.exports = {
             var batchIds = batchList.rows.map(m=>m.batchId);
             var eworkFunc = this.dbContents.workSequelize.eworks.findAll({
                 attributes: ['batchId', [Sequelize.literal('CONCAT(workId)'), 'workId'], ['tags', 'reviceObject'], 'classId'],
-                where: {batchId: {$in: batchIds}}
+                where: {batchId: {$in: batchIds}, status: 0}
             });
             var eworkContentFunc = this.dbContents.workSequelize.workContents.findAll({
-                attributes: ['batchId', 'packageId', 'cid', 'moduleId', 'versionId', 'parentVersionId', 'resourceName', 'resourceType'],
+                attributes: [[Sequelize.literal('DISTINCT batchId'), 'batchId'], 'packageId', 'cId', 'moduleId', 'versionId', 'parentVersionId', 'resourceName', 'resourceType'],
                 where: {batchId: {$in: batchIds}}
             });
             workList = yield eworkFunc;
@@ -115,11 +117,18 @@ module.exports = {
                 limit: pageSize,
             }) : [];
 
-        result.forEach(item=> {
-            item.productId = item.packageId;
-            item.productName = "书籍名称";
-            item.cover = "http://www.ciwong.com"
-        })
+        yield workHelper.getProductInfo(result.map(t=>t.packageId)).then(products=> {
+            result.forEach(item=> {
+                var product = products.find(t=>t.product_id === item.packageId);
+                item.productId = item.packageId;
+                if (product) {
+                    item.productName = product.product_name;
+                    item.cover = product.cover_img_url;
+                } else {
+                    item.productName = item.cover = "";
+                }
+            })
+        });
 
         this.success({
             page: page, pageSize: pageSize,
@@ -137,7 +146,7 @@ module.exports = {
         this.errors && this.validateError();
 
         yield this.dbContents.workSequelize.doEworks.findAll({
-            attributes: [[Sequelize.literal('COUNT(*)'), 'addCount'], 'cid'],
+            attributes: [[Sequelize.literal('COUNT(*)'), 'addCount'], 'cId'],
             where: {
                 classId, brandId, packageId,
                 workId: 0,
@@ -145,7 +154,7 @@ module.exports = {
                 moduleId: {$ne: 5},
                 submitDate: {$gt: lastDate}
             },
-            group: 'cid'
+            group: 'cId'
         }).then(this.success);
     },
     //获取答题卡作业新提交的作业次数
@@ -177,7 +186,8 @@ module.exports = {
             raw: true,
             attributes: [[Sequelize.literal('CONCAT(doWorkId)'), 'doWorkId'], 'userId', 'userName', 'packageId',
                 'cId', 'moduleId', 'versionId', 'resourceName', 'parentVersionId', 'resourceType', 'submitDate',
-                'doWorkPackageUrl', 'workScore', 'actualScore', 'workStatus', 'workLong', 'classId', 'submitCount'],
+                'doWorkPackageUrl', 'workScore', 'actualScore', 'workStatus', 'workLong', 'classId', 'submitCount',
+                [Sequelize.literal('comment'), 'commentContent']],
             where: {
                 classId, brandId, packageId, cid,
                 workId: 0,
@@ -195,8 +205,8 @@ module.exports = {
         this.errors && this.validateError();
 
         var eworksFunc = this.dbContents.workSequelize.eworks.findById(workId, {
-            attributes: [[Sequelize.literal('CONCAT(workId)'), 'workId'], 'workName', 'publishUserId',
-                'publishUserName', 'workMessage', 'publishDate', 'effectiveDate', 'totalNum', 'Status', 'workType']
+            attributes: [[Sequelize.literal('CONCAT(workId)'), 'workId'], 'workName', 'publishUserId', 'publishUserName',
+                'workMessage', 'publishDate', 'effectiveDate', 'totalNum', 'workType', 'status']
         });
 
         var doeworksFunc = this.dbContents.workSequelize.doEworks.findAll({
@@ -208,8 +218,8 @@ module.exports = {
 
         var workContentsFunc = this.dbContents.workSequelize.workContents.findAll({
             raw: true,
-            attributes: ['packageId', 'cid', 'versionId', 'parentVersionId', 'moduleId', 'resourceName',
-                'requirementContent', 'checkedResource'],
+            attributes: ['packageId', 'cId', 'versionId', 'parentVersionId', 'moduleId', 'resourceName',
+                'resourceType', 'requirementContent', 'checkedResource'],
             where: {workId: workId}
         });
 
@@ -278,7 +288,7 @@ module.exports = {
         var clientId = this.checkQuery('client_id').default(0).toInt().value;
 
         this.errors && this.validateError();
-        if (!Array.isArray(workAnswers) || workAnswers.length < 1) {
+        if (!Array.isArray(workAnswers)) {
             this.error('workAnswers数据格式错误!', 101)
         }
 
@@ -311,7 +321,7 @@ module.exports = {
             this.success(JSON.parse(doWorkAnswer.submitContent))
         }
     },
-    //获取自主练习答案
+    //获取最后一次提交的自主练习答案
     getLastSelfLearnAnswer: function *() {
         var brandId = this.checkQuery('brandId').toInt().value;
         var versionId = this.checkQuery('versionId').isNumeric().value;
@@ -324,7 +334,8 @@ module.exports = {
             attributes: ['doWorkId'],
             where: {
                 brandId, versionId, packageId, resourceType, cid, workId: 0
-            }
+            },
+            order: "submitDate DESC"
         }).then(data=> {
             if (data) {
                 return this.dbContents.workSequelize.workAnswers.findById(data.doWorkId)
@@ -333,7 +344,7 @@ module.exports = {
             this.success(workAnser ? JSON.parse(workAnser.submitContent) : []);
         }).catch(this.error)
     },
-    //老师保存批改答案
+    //老师保存批改答案[目前只支持在线作答]
     saveCorrectAnswer: function *() {
         this.allow('POST').allowJson();
         var doWorkId = this.checkBody('doWorkId').isNumeric().value;
@@ -346,26 +357,14 @@ module.exports = {
         }
         var doWorkInfo = yield this.dbContents.workSequelize.doEworks.findById(doWorkId, {
             raw: true,
-            attributes: ['moduleId'],
-            include: [{
-                attributes: [],
-                model: this.dbContents.workSequelize.eworks,
-                where: {publishUserId: this.request.userId}
-            }]
+            attributes: ['moduleId']
         })
-        if (!doWorkInfo) {
-            this.error('未找到作业或无批改权限', 102);
-        }
-        if (![123, 124].some(t=>t == doWorkInfo.moduleId)) {
-            this.error('当前接口不支持此作业类型', 103);
-        }
-        //视频讲解格式验证
-        if (doWorkInfo.moduleId === 123 && !correctContents.every(m=>Array.isArray(m.learnRecods) && m.learnRecods.length > 0)) {
-            this.error('workAnswers数据格式错误!', 104)
+        if (!doWorkInfo || doWorkInfo.moduleId != 124) {
+            this.error('未找到作业或当前接口不支持此作业类型', 101);
         }
         //在线作答格式验证
-        if (doWorkInfo.moduleId === 124 && !correctContents.every(m=>Array.isArray(m.answers) && m.answers.length > 0)) {
-            this.error('workAnswers数据格式错误!', 105)
+        if (correctContents.every(m=>Array.isArray(m.answers) && m.answers.length > 0)) {
+            this.error('workAnswers数据格式错误!', 102)
         }
 
         yield this.dbContents.workSequelize.transaction(trans=> {
@@ -385,33 +384,152 @@ module.exports = {
             eventFactory.workEvent && eventFactory.workEvent.emit('corrrectWork', doWorkId)
         }).catch(this.error)
     },
+    //获取视频讲解作业自主练习的资源
+    getVideoWorkSelfLearnRecords: function *() {
+        var brandId = this.checkQuery('brandId').toInt().value;
+        var classId = this.checkQuery('classId').toInt().gt(0).value;
+        this.errors && this.validateError();
+
+        yield this.dbContents.workSequelize.doEworks.findAll({
+            attributes: [[Sequelize.literal('DISTINCT versionId'), 'versionId'], 'resourceName',
+                'packageId', 'cId'],
+            where: {workId: 0, moduleId: 123, delStatus: 0, classId, brandId},
+            order: 'submitDate DESC'
+        }).then(this.success)
+    },
     //获取首次提交的自主练习成绩
-    getFirstLearnSelfScore: function *() {
+    getFirstVideoWorkLearnSelfScore: function *() {
         var brandId = this.checkQuery('brandId').toInt().value;
         var versionId = this.checkQuery('versionId').isNumeric().value;
         var packageId = this.checkQuery('packageId').toInt().gt(0).value;
-        var resourceType = this.checkQuery('resourceType').isUUID().value;
         var cid = this.checkQuery('cid').notEmpty().value;
         var classId = this.checkQuery('classId').toInt().gt(0).value;
         this.errors && this.validateError();
 
         yield this.dbContents.workSequelize.doEworks.findAll({
             attributes: ['userId', 'userName', 'actualScore'],
-            where: {brandId, versionId, packageId, resourceType, cid, classId, submitCount: 1}
+            where: {brandId, versionId, packageId, cid, classId, moduleId: 123, submitCount: 1, workId: 0}
+        }).then(this.success)
+    },
+    //获取班级中最后一次自主测试的视频讲解答案
+    getSelfLearnVideoWorkAnswers: function *() {
+        var brandId = this.checkQuery('brandId').toInt().value;
+        var versionId = this.checkQuery('versionId').isNumeric().value;
+        var packageId = this.checkQuery('packageId').toInt().gt(0).value;
+        var cid = this.checkQuery('cid').notEmpty().value;
+        var classId = this.checkQuery('classId').toInt().gt(0).value;
+        this.errors && this.validateError();
+
+        yield this.dbContents.workSequelize.doEworks.findAll({
+            raw: true,
+            attributes: ['userId', 'userName', 'actualScore'],
+            include: [{
+                attributes: ['submitContent'],
+                model: this.dbContents.workSequelize.workAnswers
+            }],
+            where: {packageId, cid, versionId, brandId, classId, workId: 0, moduleId: 123, delStatus: 0}
+        }).then(list=> {
+            var result = list.map(item=> {
+                return {
+                    userId: item.userId,
+                    userName: item.userName,
+                    actualScore: item.actualScore,
+                    userAnswers: JSON.parse(item['eworkanswer.submitContent'])
+                }
+            })
+            this.success(result);
+        })
+    },
+    //获取视频讲解作业的布置记录(PC端作业报告使用)
+    getVideoWorkPublishRecords: function *() {
+        var brandId = this.checkQuery('brandId').toInt().value;
+        var classId = this.checkQuery('classId').toInt().gt(0).value;
+        this.errors && this.validateError();
+
+        yield this.dbContents.workSequelize.eworks.findAll({
+            raw: true,
+            attributes: [[Sequelize.literal('DISTINCT CONCAT(eworks.workId)'), 'workId'], 'workName'],
+            include: [{
+                attributes: [],
+                model: this.dbContents.workSequelize.workContents,
+                where: {moduleId: 123}
+            }],
+            where: {publishUserId: this.request.userId, brandId, classId, status: 0},
+            order: "publishDate DESC"
+        }).then(this.success)
+    },
+    //获取作业内容(PC端作业报告使用)
+    getWorkContents: function *() {
+        var workId = this.checkQuery('workId').notEmpty().isNumeric().value;
+        var moduleId = this.checkQuery('moduleId').default(123).toInt().value;
+        this.errors && this.validateError();
+
+        var condition = {workId: workId, moduleId: 123};
+        if (moduleId !== 0) {
+            condition.moduleId = moduleId
+        }
+
+        yield this.dbContents.workSequelize.workContents.findAll({
+            attributes: ['packageId', 'cId', 'moduleId', 'versionId', 'parentVersionId', 'resourceType', 'resourceName'],
+            where: condition
         }).then(this.success)
     },
     //获取首次提交的作业的成绩
     getFirstWorkScore: function *() {
         var versionId = this.checkQuery('versionId').isNumeric().value;
+        var parentVersionId = this.checkQuery('parentVersionId').isNumeric().value;
         var resourceType = this.checkQuery('resourceType').isUUID().value;
-        var cid = this.checkQuery('cid').notEmpty().value;
         var workId = this.checkQuery('workId').isNumeric().value;
         this.errors && this.validateError();
 
         yield this.dbContents.workSequelize.doEworks.findAll({
             attributes: ['userId', 'userName', 'actualScore'],
-            where: {versionId, resourceType, cid, workId, submitCount: 1}
+            where: {versionId, parentVersionId, resourceType, workId, submitCount: 1}
         }).then(this.success)
+    },
+    //批量获取作业答案(PC端作业报告使用)
+    getUserVideoWorkAnswers: function *() {
+        var versionId = this.checkQuery('versionId').isNumeric().value;
+        var workId = this.checkQuery('workId').isNumeric().value;
+        this.errors && this.validateError();
+
+        yield this.dbContents.workSequelize.doEworks.findAll({
+            raw: true,
+            attributes: ['userId', 'userName', 'actualScore'],
+            include: [{
+                attributes: ['submitContent'],
+                model: this.dbContents.workSequelize.workAnswers
+            }],
+            where: {versionId, workId, moduleId: 123, delStatus: 0}
+        }).then(list=> {
+            var result = list.map(item=> {
+                return {
+                    userId: item.userId,
+                    userName: item.userName,
+                    actualScore: item.actualScore,
+                    userAnswers: JSON.parse(item['eworkanswer.submitContent'])
+                }
+            })
+            this.success(result);
+        })
+    },
+    //根据doworkId获取作业信息
+    getDoWorkInfo: function *() {
+        var doWorkId = this.checkQuery('doWorkId').isNumeric().value;
+        this.errors && this.validateError();
+        yield this.dbContents.workSequelize.doEworks.findById(doWorkId, {
+            raw: true,
+            attributes: [[Sequelize.literal('CONCAT(doWorkId)'), 'doWorkId'], 'userId', 'userName', 'packageId',
+                'cId', 'moduleId', 'resourceName', 'versionId', 'parentVersionId', 'resourceType', 'submitDate',
+                'doWorkPackageUrl', [Sequelize.literal('CONCAT(workId)'), 'workId'], 'actualScore', 'workLong', 'workStatus', 'classId',
+                'submitCount', [Sequelize.literal('CONCAT(comment)'), 'commentContent']]
+        }).then(doWork=> {
+            if (doWork) {
+                doWork.submitDate = doWork.submitDate.toUnix()
+                doWork.packageId = doWork.packageId.toString()
+            }
+            this.success(doWork)
+        }).catch(this.error)
     }
 }
 

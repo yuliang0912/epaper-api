@@ -22,9 +22,10 @@ app.use(require('./lib/api_auto_route')(app))
 require('koa-validate')(app)
 require('./proxy/message/rabbit_helper')(config.msgRabbitMq)
 require('./task_schedule/work_effective_task').start();
+require('./task_schedule/message_push_mq_task').start();
 
 app.on('error', function (err) {
-    log.error('server error', err);
+    console.log('server error', err);
 });
 
 require('./configs/database')().then(dbContents=> {
@@ -42,3 +43,8 @@ if (!module.parent) {
 } else {
     module.exports = app
 }
+
+//监听所有未处理的Promise.reject异常
+process.on('unhandledRejection', function (err, p) {
+    console.error("unhandledRejectionLogs:" + err.stack)
+});

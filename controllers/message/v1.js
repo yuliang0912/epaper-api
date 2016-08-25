@@ -70,7 +70,7 @@ module.exports = {
                     LEFT JOIN msgreceiver on msgreceiver.msgId = msgmain.msgId\
                     WHERE receiverId = :receiverId AND msgmain.`status` <> 1\
                     AND brandId = :brandId ORDER BY msgmain.msgId DESC\
-                ) temp GROUP BY senderId ORDER BY msgId DESC";
+                ) temp GROUP BY senderId";
 
         var msgList = yield this.dbContents.messageSequelize.query(sql, {
             replacements: sqlParams,
@@ -122,7 +122,7 @@ module.exports = {
                         INNER JOIN msgcontent ON msgcontent.msgId = msgreceiver.msgId\
                         WHERE msgreceiver.receiverId = :receiverId\
                         AND msgmain.senderId = :senderId AND msgmain.status <> 1\
-                        AND brandId = :brandId";
+                        AND brandId = :brandId ORDER BY msgmain.MsgId DESC";
 
         let sqlPage = format(baseSql, " count(*)  AS msgCount ");
 
@@ -179,7 +179,7 @@ module.exports = {
                         INNER JOIN msgcontent ON msgcontent.msgId = msgreceiver.msgId\
                         WHERE msgreceiver.receiverId = :receiverId\
                         AND msgmain.msgType = :msgType AND msgmain.status <> 1\
-                        AND msgmain.brandId = :brandId";
+                        AND msgmain.brandId = :brandId ORDER BY msgmain.MsgId DESC";
 
         let sqlPage = format(baseSql, "count(*) AS msgCount ");
 

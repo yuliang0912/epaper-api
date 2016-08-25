@@ -11,11 +11,13 @@ configs.forEach(item=> {
     let handlers = require(item.requireFilePath)
     let eventInstall = module.exports[item.name] = new eventEmitter();
 
+    eventInstall.handlerFunc = {}
     eventInstall.eventNameArray = []
+
     item.events.forEach(event=> {
         eventInstall.eventNameArray.push(event.name)
         event.eventHandler.forEach(handlerName=> {
-            let handler = handlers[handlerName];
+            let handler = handlers[handlerName]
             if (typeof handler === 'function') {
                 eventInstall.on(event.name, handler)
                 //对外暴露原始方法,方便给需要做回调的情景下使用

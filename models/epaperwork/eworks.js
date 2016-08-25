@@ -89,6 +89,7 @@ module.exports = function (workSequelize) {
                     this.belongsTo(models.workBatch, {foreignKey: 'batchId'}); // 1:1
                     this.hasMany(models.doEworks, {foreignKey: 'workId'}); //1:N
                     this.hasMany(models.workMembers, {foreignKey: 'workId'}); //1:N
+                    this.hasMany(models.workContents, {foreignKey: 'workId'}); //1:N
                 }
             }
         }

@@ -38,6 +38,20 @@
           "corrrectWorkHandler"
         ],
         "description": "批改作业事件"
+      },
+      {
+        "name": "checkWork",
+        "eventHandler": [
+          "checkWorkHandler"
+        ],
+        "description": "检查作业事件"
+      },
+      {
+        "name": "testEvent",
+        "eventHandler": [
+          "testEventHandler"
+        ],
+        "description": "测试事件事件"
       }
     ]
   }

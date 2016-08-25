@@ -121,6 +121,8 @@ module.exports = function (workSequelize) {
             classMethods: {
                 associate: function (models) { // 1:1
                     this.belongsTo(models.eworks, {foreignKey: 'workId'});
+                    this.belongsTo(models.workContents, {foreignKey: 'doworkId'});
+                    this.belongsTo(models.workAnswers, {foreignKey: 'doworkId'});
                 }
             }
         }

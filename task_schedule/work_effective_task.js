@@ -13,7 +13,9 @@ var handle;
 
 module.exports.start = function () {
     var rule = new schedule.RecurrenceRule();
+    var random = process.pid % 9;
     rule.second = process.pid % 60;
+    rule.minute = [1, 10, 20, 30, 40, 50].map(m=>m += random);
     handle = schedule.scheduleJob(rule, workRemindTask);
 }
 
@@ -33,7 +35,7 @@ function workRemindTask() {
             effectiveDate: {$between: dateSplit},
             pushStatus: {$in: [0, 2]}
         },
-        limit: 20,
+        limit: 100,
         order: 'effectiveDate ASC'
     }).then(batchList=> {
         batchList.length > 0 && eventFactory.workEvent && eventFactory.workEvent.emit('workEffective', batchList.map(m=>m.batchId))
