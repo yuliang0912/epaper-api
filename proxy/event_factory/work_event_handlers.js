@@ -45,16 +45,17 @@ module.exports.publishWorkHandler = function (batchId) {
                 receiverType: msgEnum.receiverTypeEnum.toIndividual,
                 msgIntr: "亲爱的同学,你收到新的作业了!"
             }
-            let messageContent = {
-                content: {
-                    workName: batch.workName,
-                    publishDate: batch.publishDate.toUnix(),
-                    effectiveDate: batch.effectiveDate.toUnix(),
-                    workContent: results[1].workContent || ''
-                }
-            }
             let tasks = results[2].groupBy('workId').map(work=> {
-                messageContent.attach = messageContent.content.workId = work.key
+                let messageContent = {
+                    content: {
+                        workName: batch.workName,
+                        publishDate: batch.publishDate.toUnix(),
+                        effectiveDate: batch.effectiveDate.toUnix(),
+                        workContent: results[1].workContent || '',
+                        workId: work.key
+                    },
+                    attach: work.key
+                }
                 work.value.forEach(m=>delete m.workId)
                 return sendMsgHelper.sendMsg(messageModel, messageContent, work.value)
             })
