@@ -56,6 +56,32 @@ module.exports = {
             type: Sequelize.QueryTypes.SELECT
         }).then(this.success);
     },
+    //根据消息类型获取未读消息数量
+    getNoReadMsgCountByType: function *() {
+        var msgType = this.checkQuery('msgType').toInt().value;
+        var brandId = this.checkQuery('brandId').toInt().value;
+        this.errors && this.validateError();
+
+        let sql = "SELECT COUNT(*) as msgCount FROM msgreceiver\
+                INNER JOIN msgmain on msgreceiver.msgId = msgmain.msgId\
+                WHERE msgStatus = 0 AND receiverId = :receiverId AND msgmain.`status` <> 1\
+                AND brandId = :brandId AND msgmain.msgType = :msgType";
+
+        yield this.dbContents.messageSequelize.query(sql, {
+            replacements: {
+                brandId: brandId,
+                msgType: msgType,
+                receiverId: this.request.userId
+            },
+            type: Sequelize.QueryTypes.SELECT
+        }).then(data=> {
+            if (Array.isArray(data) && data.length > 0) {
+                this.success(data[0].msgCount)
+            } else {
+                this.success(0)
+            }
+        });
+    },
     //分组获取消息列表以及该分组未读消息数量
     getMsgList: function *() {
         var brandId = this.checkQuery('brandId').toInt().value;
