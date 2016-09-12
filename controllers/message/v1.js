@@ -43,10 +43,10 @@ module.exports = {
         var brandId = this.checkQuery('brandId').toInt().value;
         this.errors && this.validateError();
 
-        let sql = "SELECT senderId,COUNT(*) as msgCount,MAX(msgmain.msgId) as maxMsgId FROM msgreceiver \
-                 INNER JOIN msgmain on msgreceiver.msgId = msgmain.msgId\
-                 WHERE msgStatus = 0 AND receiverId = :receiverId AND msgmain.`status` <> 1\
-                 AND brandId = :brandId  GROUP BY senderId";
+        let sql = `SELECT senderId,COUNT(*) as msgCount,MAX(msgmain.msgId) as maxMsgId FROM msgreceiver
+                 INNER JOIN msgmain on msgreceiver.msgId = msgmain.msgId
+                 WHERE msgStatus = 0 AND receiverId = :receiverId AND msgmain.status <> 1
+                 AND brandId = :brandId  GROUP BY senderId`;
 
         yield this.dbContents.messageSequelize.query(sql, {
             replacements: {
@@ -62,10 +62,10 @@ module.exports = {
         var brandId = this.checkQuery('brandId').toInt().value;
         this.errors && this.validateError();
 
-        let sql = "SELECT COUNT(*) as msgCount FROM msgreceiver\
-                INNER JOIN msgmain on msgreceiver.msgId = msgmain.msgId\
-                WHERE msgStatus = 0 AND receiverId = :receiverId AND msgmain.`status` <> 1\
-                AND brandId = :brandId AND msgmain.msgType = :msgType";
+        let sql = `SELECT COUNT(*) as msgCount FROM msgreceiver
+                INNER JOIN msgmain on msgreceiver.msgId = msgmain.msgId
+                WHERE msgStatus = 0 AND receiverId = :receiverId AND msgmain.status <> 1
+                AND brandId = :brandId AND msgmain.msgType = :msgType`;
 
         yield this.dbContents.messageSequelize.query(sql, {
             replacements: {
@@ -91,12 +91,12 @@ module.exports = {
             brandId: brandId,
             receiverId: this.request.userId
         };
-        let sql = "SELECT * FROM(\
-                    SELECT msgmain.*,msgreceiver.msgStatus FROM msgmain\
-                    LEFT JOIN msgreceiver on msgreceiver.msgId = msgmain.msgId\
-                    WHERE receiverId = :receiverId AND msgmain.`status` <> 1\
-                    AND brandId = :brandId ORDER BY msgmain.msgId DESC\
-                ) temp GROUP BY senderId";
+        let sql = `SELECT * FROM(
+                    SELECT msgmain.*,msgreceiver.msgStatus FROM msgmain
+                    LEFT JOIN msgreceiver on msgreceiver.msgId = msgmain.msgId
+                    WHERE receiverId = :receiverId AND msgmain.status <> 1
+                    AND brandId = :brandId ORDER BY msgmain.msgId DESC
+                   ) temp GROUP BY senderId`;
 
         var msgList = yield this.dbContents.messageSequelize.query(sql, {
             replacements: sqlParams,
