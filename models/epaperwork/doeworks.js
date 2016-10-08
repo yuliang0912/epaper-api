@@ -74,6 +74,10 @@ module.exports = function (workSequelize) {
                 type: Sequelize.INTEGER,
                 allowNull: false
             },
+            workType: {
+                type: Sequelize.INTEGER,
+                allowNull: false
+            },
             comment: {
                 type: Sequelize.STRING,
                 defaultValue: ''

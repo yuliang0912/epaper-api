@@ -282,6 +282,7 @@ module.exports = {
         var doWorkPackageUrl = this.checkBody('doWorkPackageUrl').isUrl().value;
         var actualScore = this.checkBody('actualScore').toFloat().value;
         var brandId = this.checkBody('brandId').toInt().value;
+        var workType = this.checkBody('workType').default(0).toInt().value;
         var classId = this.checkBody('classId').toInt().value;
         var workAnswers = this.checkBody('workAnswers').toJson().value;
         var userName = this.checkBody('userName').notEmpty().value;
@@ -294,7 +295,7 @@ module.exports = {
 
         var doEwork = {
             workId, cid, packageId, moduleId, versionId, resourceName, parentVersionId, resourceType,
-            workLong, doWorkPackageUrl, actualScore, brandId, classId, userName,
+            workLong, doWorkPackageUrl, actualScore, brandId, workType, classId, userName,
             workScore: 100,
             workStatus: 1,
             sourceType: clientId,
@@ -522,7 +523,7 @@ module.exports = {
             attributes: [[Sequelize.literal('CONCAT(doWorkId)'), 'doWorkId'], 'userId', 'userName', 'packageId',
                 'cId', 'moduleId', 'resourceName', 'versionId', 'parentVersionId', 'resourceType', 'submitDate',
                 'doWorkPackageUrl', [Sequelize.literal('CONCAT(workId)'), 'workId'], 'actualScore', 'workLong', 'workStatus', 'classId',
-                'submitCount', [Sequelize.literal('CONCAT(comment)'), 'commentContent']]
+                'submitCount', 'workType', [Sequelize.literal('CONCAT(comment)'), 'commentContent']]
         }).then(doWork=> {
             if (doWork) {
                 doWork.submitDate = doWork.submitDate.toUnix()
