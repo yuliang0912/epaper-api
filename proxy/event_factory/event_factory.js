@@ -11,6 +11,7 @@ configs.forEach(item=> {
     let handlers = require(item.requireFilePath)
     let eventInstall = module.exports[item.name] = new eventEmitter();
 
+    eventInstall.setMaxListeners(item.events.length);
     eventInstall.handlerFunc = {}
     eventInstall.eventNameArray = []
 

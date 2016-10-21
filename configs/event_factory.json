@@ -54,5 +54,19 @@
         "description": "测试事件事件"
       }
     ]
+  },
+  {
+    "name": "agentEvent",
+    "description": "教辅云代理商模块相关事件中心",
+    "requireFilePath": "./agent_event_handlers.js",
+    "events": [
+      {
+        "name": "pushMessage",
+        "eventHandler": [
+          "pushMessageHandler"
+        ],
+        "description": "代理商给个人用户推送消息"
+      }
+    ]
   }
 ]

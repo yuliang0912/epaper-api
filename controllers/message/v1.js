@@ -7,6 +7,7 @@ var _ = require('underscore');
 var moment = require('moment');
 var format = require('string-format');
 var Sequelize = require('sequelize');
+var eventFactory = require('./../../proxy/event_factory/event_factory')
 var sendMsgHelper = require('../../proxy/message/send_msg_helper');
 
 //目前后台只能针对用户ID进行推送.前期只实现这一部分功能,后期考虑针对角色进行推送
@@ -38,15 +39,31 @@ module.exports = {
         };
         yield sendMsgHelper.sendMsg(messageModel, messageContent, receiverIdList).then(this.success).catch(this.error)
     },
+    //代理商消息模块
+    agentEventTriggler: function *() {
+        this.allow('POST').allowJson();
+        var eventName = this.checkBody('eventName').notEmpty().value;
+        var eventArgs = this.checkBody('eventArgs').notEmpty().value;
+        this.errors && this.validateError();
+
+        if (!eventFactory.agentEvent) {
+            this.error('代理商事件已从配置中取消或者更改', 101)
+        }
+        if (!eventFactory.agentEvent.eventNameArray.some(t=>t === eventName)) {
+            this.error('未找到事件' + eventName, 102)
+        }
+        eventFactory.agentEvent.emit(eventName, eventArgs)
+        this.success(1)
+    },
     //分组获取未读消息数量
     getNoReadMsgCount: function *() {
         var brandId = this.checkQuery('brandId').toInt().value;
         this.errors && this.validateError();
 
-        let sql = `SELECT senderId,COUNT(*) as msgCount,MAX(msgmain.msgId) as maxMsgId FROM msgreceiver
-                 INNER JOIN msgmain on msgreceiver.msgId = msgmain.msgId
-                 WHERE msgStatus = 0 AND receiverId = :receiverId AND msgmain.status <> 1
-                 AND brandId = :brandId  GROUP BY senderId`;
+        let sql = "SELECT senderId,COUNT(*) as msgCount,MAX(msgmain.msgId) as maxMsgId FROM msgreceiver \
+                 INNER JOIN msgmain on msgreceiver.msgId = msgmain.msgId\
+                 WHERE msgStatus = 0 AND receiverId = :receiverId AND msgmain.`status` <> 1\
+                 AND brandId = :brandId  GROUP BY senderId";
 
         yield this.dbContents.messageSequelize.query(sql, {
             replacements: {
@@ -62,10 +79,10 @@ module.exports = {
         var brandId = this.checkQuery('brandId').toInt().value;
         this.errors && this.validateError();
 
-        let sql = `SELECT COUNT(*) as msgCount FROM msgreceiver
-                INNER JOIN msgmain on msgreceiver.msgId = msgmain.msgId
-                WHERE msgStatus = 0 AND receiverId = :receiverId AND msgmain.status <> 1
-                AND brandId = :brandId AND msgmain.msgType = :msgType`;
+        let sql = "SELECT COUNT(*) as msgCount FROM msgreceiver\
+                INNER JOIN msgmain on msgreceiver.msgId = msgmain.msgId\
+                WHERE msgStatus = 0 AND receiverId = :receiverId AND msgmain.`status` <> 1\
+                AND brandId = :brandId AND msgmain.msgType = :msgType";
 
         yield this.dbContents.messageSequelize.query(sql, {
             replacements: {
@@ -91,12 +108,12 @@ module.exports = {
             brandId: brandId,
             receiverId: this.request.userId
         };
-        let sql = `SELECT * FROM(
-                    SELECT msgmain.*,msgreceiver.msgStatus FROM msgmain
-                    LEFT JOIN msgreceiver on msgreceiver.msgId = msgmain.msgId
-                    WHERE receiverId = :receiverId AND msgmain.status <> 1
-                    AND brandId = :brandId ORDER BY msgmain.msgId DESC
-                   ) temp GROUP BY senderId`;
+        let sql = "SELECT * FROM(\
+                    SELECT msgmain.*,msgreceiver.msgStatus FROM msgmain\
+                    LEFT JOIN msgreceiver on msgreceiver.msgId = msgmain.msgId\
+                    WHERE receiverId = :receiverId AND msgmain.`status` <> 1\
+                    AND brandId = :brandId ORDER BY msgmain.msgId DESC\
+                ) temp GROUP BY senderId";
 
         var msgList = yield this.dbContents.messageSequelize.query(sql, {
             replacements: sqlParams,
