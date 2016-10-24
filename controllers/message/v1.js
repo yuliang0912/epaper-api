@@ -271,4 +271,5 @@ module.exports = {
             this.success(data[0] > 0);
         });
     },
+
 }

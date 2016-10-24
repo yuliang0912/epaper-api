@@ -14,6 +14,7 @@ var msgDbContents = function () {
         msgMain: require('../models/message/msgmain')(messageSequelize),
         msgReceiver: require('../models/message/msgreceiver')(messageSequelize),
         msgContent: require('../models/message/msgcontent')(messageSequelize),
+        userLogs: require('../models/message/userlogs')(messageSequelize),
     };
     InitDbModels(models);
     return Object.assign(messageSequelize, models);
