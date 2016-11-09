@@ -5,6 +5,7 @@
 "use strict"
 
 module.exports = {
+    noAuths: ['getLogs'],
     addLog: function *() {
         this.allow('POST').allowJson();
         var brandId = this.checkBody('brandId').toInt().value;
@@ -28,5 +29,22 @@ module.exports = {
         yield this.dbContents.messageSequelize.userLogs.create(model).then(data=> {
             return data && data.id > 0 ? 1 : 0;
         }).then(this.success).catch(this.error)
+    },
+    getLogs: function *() {
+        var brandId = this.checkQuery('brandId').default(-1).toInt().value;
+        var userId = this.checkQuery('userId').notEmpty().toInt().value;
+        this.errors && this.validateError();
+
+        var condition = {userId}
+
+        if (brandId > -1) {
+            condition.brandId = brandId;
+        }
+
+        yield this.dbContents.messageSequelize.userLogs.findAll({where: condition, order: 'Id DESC', raw: true})
+            .then(result=> {
+                result.forEach(t=>t.logInfo = JSON.parse(t.logInfo))
+                return result
+            }).then(this.success).catch(this.error)
     }
 }

@@ -1,10 +1,12 @@
 "use strict"
 
 var _ = require('underscore');
+var Promise = require('bluebird')
 var Sequelize = require('sequelize');
 var workHelper = require('./../../proxy/epaperwork/work_helper');
 var eventFactory = require('./../../proxy/event_factory/event_factory')
 var utils = require('../../lib/api_utils')
+
 
 module.exports = {
     //作业相关事件触发器
@@ -194,10 +196,7 @@ module.exports = {
                 delStatus: 0,
                 moduleId: {$ne: 5},
             }
-        }).then(data=> {
-            data.forEach(m=>m.submitDate = m.submitDate.valueOf() / 1000);
-            this.success(data);
-        });
+        }).each(m=>m.submitDate = m.submitDate.valueOf() / 1000).then(this.success).catch(this.error)
     },
     //根据作业ID获取作业详情
     getUserWorkDetail: function *() {
@@ -223,8 +222,7 @@ module.exports = {
             where: {workId: workId}
         });
 
-        yield Promise.all([eworksFunc, doeworksFunc, workContentsFunc]).then(results=> {
-            var eworks = results[0];
+        yield Promise.all([eworksFunc, doeworksFunc, workContentsFunc]).spread(function (eworks, doeworks, workContents) {
             var result = {
                 workId: workId,
                 workName: eworks.workName,
@@ -237,8 +235,8 @@ module.exports = {
                 isDel: eworks.status == 2 ? 1 : 0,
                 serviceType: eworks.workType
             };
-            result.workContents = results[2].map(item=> {
-                var data = _.find(results[1], model=> {
+            result.workContents = workContents.map(item=> {
+                var data = doeworks.find(model=> {
                     return item.versionId === model.versionId
                         && item.parentVersionId === model.parentVersionId
                         && item.moduleId === model.moduleId;
@@ -263,9 +261,9 @@ module.exports = {
                 delete item.workId;
                 item.packageId = item.packageId.toString();
                 return item;
-            });
-            this.success(result);
-        }).catch(this.error)
+            })
+            return result;
+        }).then(this.success).catch(this.error)
     },
     //提交线上作答作业
     submitWork: function *() {
@@ -364,7 +362,7 @@ module.exports = {
             this.error('未找到作业或当前接口不支持此作业类型', 101);
         }
         //在线作答格式验证
-        if (correctContents.every(m=>Array.isArray(m.answers) && m.answers.length > 0)) {
+        if (!correctContents.every(m=>Array.isArray(m.answers) && m.answers.length > 0)) {
             this.error('workAnswers数据格式错误!', 102)
         }
 
@@ -396,7 +394,7 @@ module.exports = {
                 'packageId', 'cId'],
             where: {workId: 0, moduleId: 123, delStatus: 0, classId, brandId},
             order: 'submitDate DESC'
-        }).then(this.success)
+        }).then(this.success).catch(this.error)
     },
     //获取首次提交的自主练习成绩
     getFirstVideoWorkLearnSelfScore: function *() {
@@ -410,7 +408,7 @@ module.exports = {
         yield this.dbContents.workSequelize.doEworks.findAll({
             attributes: ['userId', 'userName', 'actualScore'],
             where: {brandId, versionId, packageId, cid, classId, moduleId: 123, submitCount: 1, workId: 0}
-        }).then(this.success)
+        }).then(this.success).catch(this.error)
     },
     //获取班级中最后一次自主测试的视频讲解答案
     getSelfLearnVideoWorkAnswers: function *() {
@@ -429,17 +427,14 @@ module.exports = {
                 model: this.dbContents.workSequelize.workAnswers
             }],
             where: {packageId, cid, versionId, brandId, classId, workId: 0, moduleId: 123, delStatus: 0}
-        }).then(list=> {
-            var result = list.map(item=> {
-                return {
-                    userId: item.userId,
-                    userName: item.userName,
-                    actualScore: item.actualScore,
-                    userAnswers: JSON.parse(item['eworkanswer.submitContent'])
-                }
-            })
-            this.success(result);
-        })
+        }).map(item=> {
+            return {
+                userId: item.userId,
+                userName: item.userName,
+                actualScore: item.actualScore,
+                userAnswers: JSON.parse(item['eworkanswer.submitContent'])
+            }
+        }).then(this.success).catch(this.error)
     },
     //获取视频讲解作业的布置记录(PC端作业报告使用)
     getVideoWorkPublishRecords: function *() {
@@ -457,7 +452,7 @@ module.exports = {
             }],
             where: {publishUserId: this.request.userId, brandId, classId, status: 0},
             order: "publishDate DESC"
-        }).then(this.success)
+        }).then(this.success).catch(this.error)
     },
     //获取作业内容(PC端作业报告使用)
     getWorkContents: function *() {
@@ -473,7 +468,7 @@ module.exports = {
         yield this.dbContents.workSequelize.workContents.findAll({
             attributes: ['packageId', 'cId', 'moduleId', 'versionId', 'parentVersionId', 'resourceType', 'resourceName'],
             where: condition
-        }).then(this.success)
+        }).then(this.success).catch(this.error)
     },
     //获取首次提交的作业的成绩
     getFirstWorkScore: function *() {
@@ -502,17 +497,14 @@ module.exports = {
                 model: this.dbContents.workSequelize.workAnswers
             }],
             where: {versionId, workId, moduleId: 123, delStatus: 0}
-        }).then(list=> {
-            var result = list.map(item=> {
-                return {
-                    userId: item.userId,
-                    userName: item.userName,
-                    actualScore: item.actualScore,
-                    userAnswers: JSON.parse(item['eworkanswer.submitContent'])
-                }
-            })
-            this.success(result);
-        })
+        }).map(item=> {
+            return {
+                userId: item.userId,
+                userName: item.userName,
+                actualScore: item.actualScore,
+                userAnswers: JSON.parse(item['eworkanswer.submitContent'])
+            }
+        }).then(this.success).catch(this.error)
     },
     //根据doworkId获取作业信息
     getDoWorkInfo: function *() {
