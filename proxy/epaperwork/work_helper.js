@@ -118,10 +118,10 @@ module.exports.getProductInfo = function (productIds) {
             return resolve([]);
         }
         request.get('http://123.57.17.144:9014/service/get_service_product_by_Id?pIds=' + productIds.join(','), {
-            'auth': {
-                'user': '155014',
-                'pass': '1',
-                'sendImmediately': true
+            auth: {
+                user: '155014',
+                pass: '1',
+                sendImmediately: true
             }
         }, function (err, response, body) {
             if (err) {
