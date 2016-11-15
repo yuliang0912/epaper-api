@@ -5,7 +5,7 @@
 
 "use strict"
 
-const msgTypeEnum = Object.freeze({
+const msgTypeEnum = {
     //老师布置作业通知消息
     "workNotice": 10,
     //即将过期作业提醒
@@ -20,16 +20,16 @@ const msgTypeEnum = Object.freeze({
     "workCheck": 15,
     //运营商消息(站内信)
     "operatorMsg": 30
-})
+}
 
-const receiverTypeEnum = Object.freeze({
+const receiverTypeEnum = {
     //面对个人的消息(已人为单位)
     "toIndividual": 1,
     //面对角色的消息
     "toRole": 2,
     //面对品牌的消息
     "toBrand": 3
-})
+}
 
 module.exports = {
     msgTypeEnum, receiverTypeEnum
