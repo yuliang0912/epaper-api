@@ -48,7 +48,7 @@ module.exports = {
                 where: {batchId: {$in: batchIds}, status: 0}
             });
             var eworkContentFunc = this.dbContents.workSequelize.workContents.findAll({
-                attributes: [[Sequelize.literal('DISTINCT batchId'), 'batchId'], 'packageId', 'cId', 'moduleId', 'versionId', 'parentVersionId', 'resourceName', 'resourceType'],
+                attributes: [[Sequelize.literal('DISTINCT batchId'), 'batchId'], 'packageId', 'cId', 'moduleId', 'versionId', 'parentVersionId', 'resourceName', 'resourceType', 'checkedResource'],
                 where: {batchId: {$in: batchIds}}
             });
             workList = yield eworkFunc;
@@ -205,7 +205,7 @@ module.exports = {
 
         var eworksFunc = this.dbContents.workSequelize.eworks.findById(workId, {
             attributes: [[Sequelize.literal('CONCAT(workId)'), 'workId'], 'workName', 'publishUserId', 'publishUserName',
-                'workMessage', 'publishDate', 'effectiveDate', 'totalNum', 'workType', 'status']
+                'workMessage', 'publishDate', 'effectiveDate', 'totalNum', 'workType', 'status', 'classId']
         });
 
         var doeworksFunc = this.dbContents.workSequelize.doEworks.findAll({
@@ -222,6 +222,7 @@ module.exports = {
             where: {workId: workId}
         });
 
+
         yield Promise.all([eworksFunc, doeworksFunc, workContentsFunc]).spread(function (eworks, doeworks, workContents) {
             var result = {
                 workId: workId,
@@ -233,7 +234,8 @@ module.exports = {
                 effectiveDate: eworks.effectiveDate.valueOf() / 1000,
                 totalNum: eworks.totalNum,
                 isDel: eworks.status == 2 ? 1 : 0,
-                serviceType: eworks.workType
+                serviceType: eworks.workType,
+                classId: eworks.classId
             };
             result.workContents = workContents.map(item=> {
                 var data = doeworks.find(model=> {
@@ -523,6 +525,49 @@ module.exports = {
             }
             this.success(doWork)
         }).catch(this.error)
+    },
+    getUserCurrDateWorks: function *() {
+        var sql = `SELECT eworks.workId,eworks.workName,eworkcontents.resourceName,eworkcontents.packageId,eworkcontents.cId,
+                   eworkcontents.moduleId FROM eworks 
+                   INNER JOIN eworkmembers ON eworks.workId =  eworkmembers.workId
+                   INNER JOIN eworkcontents ON eworks.workId = eworkcontents.workId
+                   WHERE eworkmembers.userId = ${this.request.userId}
+                   AND eworks.publishDate > CURRENT_DATE()`
+
+        yield this.dbContents.workSequelize.query(sql, {
+            raw: true,
+            type: 'SELECT'
+        }).then(list=> list.groupBy('workId')).map(item=> {
+            return {
+                workName: item.value[0].workName,
+                packageUrl: `http://file.dzb.ciwong.com/epaper/catalogue_${item.value[0].packageId}_${item.value[0].cId}.zip`,
+                workList: item.value,
+            }
+        }).then(this.success).catch(this.error)
+    },
+    getReceiveBookchapters: function *() {
+        var brandId = this.checkQuery('brandId').toInt().value;
+        var serviceId = this.checkQuery('serviceId').toInt().gt(0).value;
+        var packageId = this.checkQuery('packageId').toInt().gt(0).value;
+        this.errors && this.validateError();
+
+        yield this.dbContents.workSequelize.eworks.findAll({
+            raw: true,
+            attributes: [],
+            include: [
+                {
+                    attributes: [],
+                    model: this.dbContents.workSequelize.workMembers,
+                    where: {userId: this.request.userId}
+                }, {
+                    attributes: [[Sequelize.literal('DISTINCT cId'), 'cId']],
+                    model: this.dbContents.workSequelize.workContents,
+                    where: {packageId}
+                }],
+            where: {status: 0, brandId, workType: serviceId}
+        }).map(item=> {
+            return item["eworkcontents.cId"];
+        }).then(this.success)
     }
 }
 

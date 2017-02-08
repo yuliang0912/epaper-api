@@ -38,7 +38,24 @@ module.exports = {
         },
         queueName: 'msgQueue',
         exchangeName: 'exchange.msg'
-    }
+    },
+    // msgRabbitMq: {
+    //     connOptions: {
+    //         host: '101.200.87.163',
+    //         port: 5672,
+    //         login: "cwmq_admin",
+    //         password: "L0v3@4dmin_cwmq",
+    //         authMechanism: 'AMQPLAIN',
+    //         connectionTimeout: 10000,
+    //         noDelay: true,
+    //         ssl: {
+    //             enabled: false
+    //         }
+    //         //vhost: "msg001"
+    //     },
+    //     queueName: 'msgQueue',
+    //     exchangeName: 'exchange.msg'
+    // }
     //https://github.com/balderdashy/waterline
     //https://github.com/balderdashy/waterline-docs#supported-adapters
 }

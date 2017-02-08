@@ -3,9 +3,12 @@
  */
 
 var Sequelize = require('sequelize');
-var dbConfig = process.env.NODE_ENV === 'production'
-    ? require('./dbconfig_pro.json')
-    : require('./dbconfig.json');
+var dbConfig =
+    process.env.NODE_ENV === 'production'
+        ? require('./dbconfig_pro.json')
+        : process.env.NODE_ENV === 'test'
+        ? require('./dbconfig_test.json')
+        : require('./dbconfig.json')
 
 var msgDbContents = function () {
     var msgDbConfig = dbConfig.epaperMsg;

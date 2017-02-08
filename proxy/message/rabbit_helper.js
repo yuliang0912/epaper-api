@@ -11,6 +11,7 @@ module.exports = function (options) {
     config = options || {};
 }
 
+
 module.exports.publishMsg = function (dataStr) {
     return new Promise(function (resolve, reject) {
         if (dataStr === null || dataStr === undefined || dataStr === "0") {
@@ -23,7 +24,7 @@ module.exports.publishMsg = function (dataStr) {
                 queue.bind(exchange, '', function () {
                     exchange.publish('', dataStr, {}, function (ret, err) {
                         err ? reject(err) : resolve(!ret)
-                        connection.end();
+                        //connection.destroy()
                     });
                 });
                 // queue.subscribe(function (message, header, deliveryInfo) {
@@ -35,9 +36,10 @@ module.exports.publishMsg = function (dataStr) {
             });
         });
         connection.on('error', function (err) {
+            console.log(err)
             reject(err)
-            connection.end();
-            console.log("rabbitMQ connection faild," + err.toString());
+            connection.destroy()
+            //console.log("rabbitMQ connection faild," + err.toString());
         });
     });
 }

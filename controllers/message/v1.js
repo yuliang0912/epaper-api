@@ -13,6 +13,9 @@ var sendMsgHelper = require('../../proxy/message/send_msg_helper');
 //目前后台只能针对用户ID进行推送.前期只实现这一部分功能,后期考虑针对角色进行推送
 module.exports = {
     noAuths: [],
+    test: function *() {
+        this.success(this.request.headers);
+    },
     //发送消息
     sendMsg: function *() {
         this.allow('POST').allowJson();
@@ -49,6 +52,7 @@ module.exports = {
         if (!eventFactory.agentEvent) {
             this.error('代理商事件已从配置中取消或者更改', 101)
         }
+
         if (!eventFactory.agentEvent.eventNameArray.some(t=>t === eventName)) {
             this.error('未找到事件' + eventName, 102)
         }
@@ -108,12 +112,22 @@ module.exports = {
             brandId: brandId,
             receiverId: this.request.userId
         };
-        let sql = "SELECT * FROM(\
-                    SELECT msgmain.*,msgreceiver.msgStatus FROM msgmain\
-                    LEFT JOIN msgreceiver on msgreceiver.msgId = msgmain.msgId\
-                    WHERE receiverId = :receiverId AND msgmain.`status` <> 1\
-                    AND brandId = :brandId ORDER BY msgmain.msgId DESC\
-                ) temp GROUP BY senderId";
+        // let sql = "SELECT * FROM(\
+        //             SELECT msgmain.*,msgreceiver.msgStatus FROM msgmain\
+        //             LEFT JOIN msgreceiver on msgreceiver.msgId = msgmain.msgId\
+        //             WHERE receiverId = :receiverId AND msgmain.`status` <> 1\
+        //             AND brandId = :brandId ORDER BY msgmain.msgId DESC\
+        //         ) temp GROUP BY senderId";
+
+        //修改支持广播类型
+        let sql = `SELECT * FROM (SELECT * FROM (
+                      SELECT msgmain.*,msgreceiver.msgStatus FROM msgmain
+                      INNER JOIN msgreceiver on msgreceiver.msgId = msgmain.msgId AND msgmain.receiverType = 1
+                      WHERE receiverId = :receiverId AND msgmain.status <> 1 AND brandId = :brandId
+                      UNION ALL
+                      SELECT msgmain.*,1 FROM msgmain
+                      WHERE receiverType = 2 AND msgmain.status <> 1 AND brandId = :brandId
+                  ) Temp ORDER BY msgId DESC) Temp1 GROUP BY senderId`;
 
         var msgList = yield this.dbContents.messageSequelize.query(sql, {
             replacements: sqlParams,
@@ -160,12 +174,24 @@ module.exports = {
             end: page * pageSize
         };
 
-        let baseSql = "SELECT {0} FROM msgreceiver\
-                        INNER JOIN msgmain ON msgmain.msgId = msgreceiver.msgId\
-                        INNER JOIN msgcontent ON msgcontent.msgId = msgreceiver.msgId\
-                        WHERE msgreceiver.receiverId = :receiverId\
-                        AND msgmain.senderId = :senderId AND msgmain.status <> 1\
-                        AND brandId = :brandId ORDER BY msgmain.MsgId DESC";
+        // let baseSql = "SELECT {0} FROM msgreceiver\
+        //                 INNER JOIN msgmain ON msgmain.msgId = msgreceiver.msgId\
+        //                 INNER JOIN msgcontent ON msgcontent.msgId = msgreceiver.msgId\
+        //                 WHERE msgreceiver.receiverId = :receiverId\
+        //                 AND msgmain.senderId = :senderId AND msgmain.status <> 1\
+        //                 AND brandId = :brandId ORDER BY msgmain.MsgId DESC";
+
+        let baseSql = `SELECT {0} FROM (
+                         SELECT msgmain.*,msgreceiver.msgStatus,msgcontent.content FROM msgreceiver
+                         INNER JOIN msgmain ON msgmain.msgId = msgreceiver.msgId
+                         INNER JOIN msgcontent ON msgcontent.msgId = msgreceiver.msgId
+                         WHERE msgreceiver.receiverId = :receiverId
+                         AND msgmain.senderId = :senderId AND msgmain.status <> 1 AND brandId = :brandId 
+                         UNION ALL
+                         SELECT msgmain.*,1,msgcontent.content FROM msgmain 
+                         INNER JOIN msgcontent ON msgcontent.msgId = msgmain.msgId
+                         WHERE receiverType = 2 AND msgmain.status <> 1 AND brandId = :brandId AND senderId = :senderId
+                       ) as t ORDER BY msgId DESC`;
 
         let sqlPage = format(baseSql, " count(*)  AS msgCount ");
 
@@ -178,7 +204,7 @@ module.exports = {
 
         var msgList = [];
         if (msgTotalCount > sqlParams.beginIndex) {
-            let sql = format(baseSql, "msgmain.*,msgreceiver.msgStatus,msgcontent.content");
+            let sql = format(baseSql, "*");
             sql += " LIMIT :beginIndex,:end";
 
             msgList = yield this.dbContents.messageSequelize.query(sql, {
@@ -269,7 +295,19 @@ module.exports = {
             }
         }).then(data=> {
             this.success(data[0] > 0);
-        });
+        })
     },
+    delete: function *() {
+        var msgId = this.checkQuery('msgId').toInt().value;
+        this.errors && this.validateError();
 
+        yield this.dbContents.messageSequelize.msgReceiver.destroy({
+            where: {
+                msgId: msgId,
+                receiverId: this.request.userId,
+            }
+        }).then(data=> {
+            this.success(data[0] > 0);
+        })
+    }
 }

@@ -18,15 +18,19 @@ module.exports.pushMessageHandler = function (msgInfo) {
             brandId: msgInfo.brandId,
             senderId: msgInfo.brandId,
             senderName: msgInfo.brandName,
-            receiverType: msgEnum.receiverTypeEnum.toIndividual,
-            msgIntr: msgInfo.messageContent.imgUrl
-                ? msgInfo.messageContent.imgUrl
-                : msgInfo.messageContent.content.curString(50)
+            receiverType: msgEnum.receiverTypeEnum.toIndividual
         }
+
+        messageModel.msgIntr =
+            msgInfo.messageContent.content === null || msgInfo.messageContent.content === undefined || msgInfo.messageContent === ""
+                ? msgInfo.messageContent.imgUrl
+                : msgInfo.messageContent.content.curString(50);
+
         let messageContent = {
             content: msgInfo.messageContent,
             attach: msgInfo.attach || '',
         }
+
         return sendMsgHelper.sendMsg(messageModel, messageContent, msgInfo.receiverIdList).then(resolve).catch(reject)
     })
 }
