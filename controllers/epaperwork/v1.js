@@ -568,6 +568,20 @@ module.exports = {
         }).map(item=> {
             return item["eworkcontents.cId"];
         }).then(this.success)
+    },
+    scoreCoefficient: function *() {
+        var brandId = this.checkQuery('brandId').toInt().value;
+        this.errors && this.validateError();
+
+        var coefficient = 1.0;
+        switch (brandId) {
+            case 1:
+                coefficient = 1.1;
+                break;
+            default:
+                break;
+        }
+        this.success(coefficient)
     }
 }
 

@@ -26,8 +26,28 @@ module.exports = {
     view: {
         root: path.resolve(__dirname, '../web'),
         cache: DEBUG ? false : 'memory',
-    },
-    msgRabbitMq: {
+    }
+}
+
+if (env === "production") {
+    module.exports.msgRabbitMq = {
+        connOptions: {
+            host: '101.200.87.163',
+            port: 5672,
+            login: "cwmq_admin",
+            password: "L0v3@4dmin_cwmq",
+            authMechanism: 'AMQPLAIN'
+        },
+        implOptions: {
+            defaultExchangeName: 'exchange.msg',
+            reconnect: true,
+            reconnectBackoffTime: 10000  //10秒尝试连接一次
+        },
+        queueName: 'msgQueue',
+        exchangeName: 'exchange.msg'
+    }
+} else {
+    module.exports.msgRabbitMq = {
         connOptions: {
             host: '121.14.117.241',
             port: 5670,
@@ -36,26 +56,12 @@ module.exports = {
             authMechanism: 'AMQPLAIN',
             vhost: "msg001"
         },
+        implOptions: {
+            defaultExchangeName: 'exchange.msg',
+            reconnect: true,
+            reconnectBackoffTime: 10000  //10秒尝试连接一次
+        },
         queueName: 'msgQueue',
         exchangeName: 'exchange.msg'
-    },
-    // msgRabbitMq: {
-    //     connOptions: {
-    //         host: '101.200.87.163',
-    //         port: 5672,
-    //         login: "cwmq_admin",
-    //         password: "L0v3@4dmin_cwmq",
-    //         authMechanism: 'AMQPLAIN',
-    //         connectionTimeout: 10000,
-    //         noDelay: true,
-    //         ssl: {
-    //             enabled: false
-    //         }
-    //         //vhost: "msg001"
-    //     },
-    //     queueName: 'msgQueue',
-    //     exchangeName: 'exchange.msg'
-    // }
-    //https://github.com/balderdashy/waterline
-    //https://github.com/balderdashy/waterline-docs#supported-adapters
+    }
 }

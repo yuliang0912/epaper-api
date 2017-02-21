@@ -20,7 +20,7 @@ app.use(require('./lib/api_response')())
 app.use(require('koa-bodyparser')(config.bodyparser))
 app.use(require('./lib/api_auto_route')(app))
 require('koa-validate')(app)
-require('./proxy/message/rabbit_helper')(config.msgRabbitMq)
+require('./proxy/message/rabbit_helper')
 require('./task_schedule/work_effective_task').start();
 require('./task_schedule/message_push_mq_task').start();
 
@@ -48,3 +48,4 @@ if (!module.parent) {
 process.on('unhandledRejection', function (err, p) {
     console.error("unhandledRejectionLogs:" + err.stack)
 });
+

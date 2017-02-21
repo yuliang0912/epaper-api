@@ -4,42 +4,60 @@
 
 "use strict"
 
+
 var amqp = require('amqp');
-var config = {};
+var exchange, isReady = false;
+var config = require('../../configs/main').msgRabbitMq
+var conn = amqp.createConnection(config.connOptions, config.implOptions);
 
-module.exports = function (options) {
-    config = options || {};
-}
+conn.on('close', function () {
+    isReady = false
+    console.log("rabbitMQ has closed...")
+})
 
+conn.on('ready', function () {
+    exchange = conn.exchange(config.exchangeName, {
+        type: 'direct',
+        autoDelete: false,
+        confirm: true
+    })
+    exchange.on("open", function () {
+        isReady = true
+    })
+    conn.queue(config.queueName, {durable: true, autoDelete: false}, function (queue) {
+        queue.bind(exchange, config.queueName, function () {
+        });
+        // queue.subscribe(function (message, header, deliveryInfo) {
+        //     if (message.data) {
+        //         console.log(message.data.toString());
+        //     }
+        // });
+    });
+    console.log('rabbitMQ connection success!');
+});
 
+conn.on('error', function (err) {
+    isReady = false
+    console.log("rabbitMQ error," + err.toString());
+})
+
+//发送消息到MQ
 module.exports.publishMsg = function (dataStr) {
     return new Promise(function (resolve, reject) {
-        if (dataStr === null || dataStr === undefined || dataStr === "0") {
+        if (!isReady || !exchange || exchange.binds == 0) {
+            console.log("rabbitMQ is not open");
             return resolve(false);
         }
-        var connection = amqp.createConnection(config.connOptions);
-        connection.on('ready', function () {
-            var exchange = connection.exchange(config.exchangeName, {type: 'direct', autoDelete: false, confirm: true});
-            connection.queue(config.queueName, {durable: true, autoDelete: false}, function (queue) {
-                queue.bind(exchange, '', function () {
-                    exchange.publish('', dataStr, {}, function (ret, err) {
-                        err ? reject(err) : resolve(!ret)
-                        //connection.destroy()
-                    });
-                });
-                // queue.subscribe(function (message, header, deliveryInfo) {
-                //     console.log("消费消息");
-                //     if (message.data) {
-                //         console.log(message.data.toString());
-                //     }
-                // });
-            });
-        });
-        connection.on('error', function (err) {
-            console.log(err)
-            reject(err)
-            connection.destroy()
-            //console.log("rabbitMQ connection faild," + err.toString());
+        exchange.publish('', dataStr, {}, function (ret, err) {
+            err ? reject(err) : resolve(!ret)
         });
     });
 }
+
+process.on('SIGINT', function () {
+    if (isReady) {
+        conn.end()
+        conn.destroy()
+    }
+    process.exit(0);
+})
