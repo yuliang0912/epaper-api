@@ -4,13 +4,13 @@
 
 var Sequelize = require('sequelize');
 var dbConfig =
-    process.env.NODE_ENV === 'production'
-        ? require('./dbconfig_pro.json')
-        : process.env.NODE_ENV === 'test'
-        ? require('./dbconfig_test.json')
-        : require('./dbconfig.json')
+    process.env.NODE_ENV === 'production' ?
+    require('./dbconfig_pro.json') :
+    process.env.NODE_ENV === 'test' ?
+    require('./dbconfig_test.json') :
+    require('./dbconfig.json')
 
-var msgDbContents = function () {
+var msgDbContents = function() {
     var msgDbConfig = dbConfig.epaperMsg;
 
     msgDbConfig.config = msgDbConfig.config || {}
@@ -27,11 +27,11 @@ var msgDbContents = function () {
     return Object.assign(messageSequelize, models);
 }
 
-var workDbContents = function () {
+var workDbContents = function() {
     var workDbConfig = dbConfig.epaperWork;
 
     workDbConfig.config = workDbConfig.config || {}
-    workDbConfig.config.logging = null
+        //workDbConfig.config.logging = null
 
     var workSequelize = new Sequelize(workDbConfig.database, workDbConfig.username, workDbConfig.password, workDbConfig.config);
 
@@ -42,33 +42,30 @@ var workDbContents = function () {
         workMembers: require('../models/epaperwork/workmembers')(workSequelize),
         workContents: require('../models/epaperwork/workcontents')(workSequelize),
         workAnswers: require('../models/epaperwork/workanswers')(workSequelize),
+        learningrecords: require('../models/epaperwork/learningrecords')(workSequelize),
     }
     InitDbModels(models);
     return Object.assign(workSequelize, models);
 }
 
 function InitDbModels(models) {
-    Object.keys(models).forEach(item=> {
+    Object.keys(models).forEach(item => {
         if (typeof models[item].associate === 'function') {
             models[item].associate(models);
         }
     });
 }
 
-module.exports = function () {
-    return new Promise(function (resolve, reject) {
+module.exports = function() {
+    return new Promise(function(resolve, reject) {
         resolve(getDbContents());
     });
 }
 
-var getDbContents = module.exports.getDbContents = function () {
+var getDbContents = module.exports.getDbContents = function() {
     return {
         Sequelize: Sequelize,
         messageSequelize: msgDbContents(),
         workSequelize: workDbContents(),
     }
 }
-
-
-
-

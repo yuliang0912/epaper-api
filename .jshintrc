@@ -1,0 +1,18 @@
+{
+    "boss": true,
+    "node": true,
+    "eqeqeq": true,
+    "strict": true,
+    "browser": true,
+    //"camelcase": true,
+    "newcap": false,
+    "undef": true,
+    "unused": true,
+    "multistr": true,
+    "onecase": true,
+    "lastsemic": true,
+    "esversion": 6,
+    "globals": {
+        "angular": false
+    }
+}
