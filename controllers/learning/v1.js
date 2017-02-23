@@ -12,10 +12,10 @@ module.exports = {
 
         this.allow('POST'); //.allowJson();
         var brandId = this.checkBody('brandId').notEmpty().toInt().value;
-        var paperId = this.checkBody('paperId').notEmpty().toInt().value;
-        var paperVersion = this.checkBody('paperVersion').notEmpty().toInt().value;
-        var quesId = this.checkBody('quesId').notEmpty().toInt().value;
-        var quesVersion = this.checkBody('quesVersion').notEmpty().toInt().value;
+        var paperId = this.checkBody('paperId').notEmpty().value;
+        var paperVersion = this.checkBody('paperVersion').notEmpty().value;
+        var quesId = this.checkBody('quesId').notEmpty().value;
+        var quesVersion = this.checkBody('quesVersion').notEmpty().value;
         var userId = this.request.userId;
 
         this.errors && this.validateError();
@@ -40,12 +40,12 @@ module.exports = {
     getrecords: function*() {
 
         var brandId = this.checkQuery('brandId').notEmpty().toInt().value;
-        var paperId = this.checkQuery('paperId').notEmpty().toInt().value;
+        var paperId = this.checkQuery('paperId').notEmpty().value;
         var userId = this.request.userId;
         this.errors && this.validateError();
 
         yield this.dbContents.workSequelize.learningrecords.findAll({
-            attributes: ['quesId', 'quesVersion', [sequelize.fn('COUNT', sequelize.col('quesId')), 'no_does']],
+            attributes: [[sequelize.literal('CONCAT(quesId)'), 'quesId'], [sequelize.literal('CONCAT(quesVersion)'), 'quesVersion'], [sequelize.fn('COUNT', sequelize.col('quesId')), 'no_does']],
             group: ['quesId'],
             order: [
                 ['quesId', 'ASC']
