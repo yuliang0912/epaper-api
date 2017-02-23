@@ -4,7 +4,7 @@ var Sequelize = require('sequelize');
 
 module.exports = function(workSequelize) {
     return workSequelize.define(
-        'videorecords', {
+        'learningrecords', {
             id: {
                 type: Sequelize.BIGINT,
                 primaryKey: true,
