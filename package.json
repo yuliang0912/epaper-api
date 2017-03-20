@@ -7,6 +7,7 @@
     "amqp": "^0.2.6",
     "bluebird": "^3.4.6",
     "co": "3.x.x",
+    "knex": "^0.12.8",
     "koa": "0.x.x",
     "koa-bodyparser": "1.x.x",
     "koa-compress": "^1.0.9",
