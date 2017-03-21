@@ -43,6 +43,7 @@ var workDbContents = function() {
         workContents: require('../models/epaperwork/workcontents')(workSequelize),
         workAnswers: require('../models/epaperwork/workanswers')(workSequelize),
         learningrecords: require('../models/epaperwork/learningrecords')(workSequelize),
+        usedpkgrecords: require('../models/epaperwork/usedpkgrecords')(workSequelize),
     }
     InitDbModels(models);
     return Object.assign(workSequelize, models);
