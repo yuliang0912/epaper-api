@@ -20,7 +20,7 @@ module.exports = function(workSequelize) {
             serviceId: {
                 type: Sequelize.INTEGER
             },
-            latestPackageId: {
+            packageId: {
                 type: Sequelize.INTEGER
             },
             createAt: {

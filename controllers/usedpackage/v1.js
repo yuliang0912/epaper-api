@@ -9,31 +9,33 @@ module.exports = {
 
     /**
      * 更新资源包的最新使用记录
+     * brandId + userId + packageId 为key, serviceId 为value 可变
      * 
      */
     updateRecord: function* () {
         this.allow('POST'); //.allowJson();
         var brandId = this.checkBody('brandId').notEmpty().toInt().value;
         var serviceId = this.checkBody('serviceId').notEmpty().toInt().value;
-        var latestPackageId = this.checkBody('packageId').notEmpty().toInt().value;
+        var packageId = this.checkBody('packageId').notEmpty().toInt().value;
         var userId = this.request.userId;
 
         this.errors && this.validateError();
 
-        // TODO: 查询记录, 不存在则创建, 否则更新
+        // TODO: 查询记录, 不存在则创建, 否则更新serviceId
         let record = yield this.dbContents.workSequelize.usedpkgrecords.findOne({
-            attributes: ['id', 'userId', 'brandId', 'serviceId', 'latestPackageId'],
+            attributes: ['id', 'userId', 'brandId', 'serviceId', 'packageId'],
             where: {
                 userId,
                 brandId,
+                packageId,
                 status: 0
             },
+            order: "updateAt DESC"
         });
         if (record) {
             // 更新
             yield this.dbContents.workSequelize.usedpkgrecords.update({
                 serviceId,
-                latestPackageId,
                 updateAt: moment().format("YYYY-MM-DD HH:mm:ss")
             }, {
                 where: {
@@ -47,7 +49,7 @@ module.exports = {
                 userId,
                 brandId,
                 serviceId,
-                latestPackageId,
+                packageId,
                 updateAt: nowTime,
                 createAt: nowTime
             });
@@ -60,35 +62,46 @@ module.exports = {
      * 
      */
     getLatest: function* () {
-        console.log('');
         var brandId = this.checkQuery('brandId').notEmpty().toInt().value;
         let serviceId = this.checkQuery('serviceId').value;
         let packageId = this.checkQuery('packageId').value;
+        let recordNum = this.checkQuery('recordNum').value || 1;
         var userId = this.request.userId;
         this.errors && this.validateError();
+        let resArr = [];
         if(!!packageId){
             let detail = yield getPackageInfoById(packageId, userId);
-            return this.success(detail);
+            let service = yield getServiceInfoById(serviceId, userId);
+            detail.serviceId = serviceId;
+            detail.serviceName = service.gGroupName;
+            resArr.push(detail);
+            return this.success(resArr);
         }
         // TODO: 查询资源包详情
-        // 1. 查询latestPackageId
+        // 1. 查询packageId
         let record = yield this.dbContents.workSequelize.usedpkgrecords.findOne({
-            attributes: ['id', 'userId', 'brandId', 'serviceId', 'latestPackageId'],
+            attributes: ['id', 'userId', 'brandId', 'serviceId', 'packageId'],
             where: {
                 userId,
                 brandId,
                 status: 0
             },
+            order: "updateAt DESC"
         });
         if(record){
-            let latestPackageId = record.latestPackageId;
+            let packageId = record.packageId;
             let serviceId = record.serviceId;
             // 检查服务的有效性
             let data = yield getServiceInfoById(serviceId, userId);
-            if(data){
+            if(data && data.gGroupState == 2){
+                // service.gGroupState == 2 上架
                 // 查询资源包详情
-                let detail = yield getPackageInfoById(latestPackageId, userId);
-                return this.success(detail);
+                let detail = yield getPackageInfoById(packageId, userId);
+                let service = data;
+                detail.serviceId = serviceId;
+                detail.serviceName = service.gGroupName;
+                resArr.push(detail);
+                return this.success(resArr);
             }
         }
         return this.error('资源无效');
