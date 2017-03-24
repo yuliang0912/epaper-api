@@ -117,7 +117,7 @@ module.exports.getProductInfo = function (productIds) {
         if (!Array.isArray(productIds) || productIds.length < 1) {
             return resolve([]);
         }
-        request.get('http://123.56.154.119:9014/service/v2/get_service_product_by_Id?pIds=' + productIds.join(','), {
+        request.get('http://100.114.31.171:9014/service/v2/get_service_product_by_Id?pIds=' + productIds.join(','), {
             auth: {
                 user: '155014',
                 pass: '1',
@@ -136,3 +136,4 @@ module.exports.getProductInfo = function (productIds) {
         });
     })
 }
+

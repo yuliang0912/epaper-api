@@ -122,7 +122,6 @@ module.exports.workEffectiveHandler = function (batchIdList) {
             if (workList.length < 1) {
                 return resolve()
             }
-            let batchWorkGroup = workList.groupBy('batchId')
             let messageModel = {
                 title: "作业提醒",
                 msgType: msgEnum.msgTypeEnum.workRemind,
@@ -131,31 +130,77 @@ module.exports.workEffectiveHandler = function (batchIdList) {
                 receiverType: msgEnum.receiverTypeEnum.toIndividual,
                 msgIntr: "老师还没有收到你的作业,请尽快提交!"
             }
-            let tasks = batchWorkGroup.map(batch=> {
-                let workContent = batch.value[0]
-                messageModel.brandId = workContent.brandId
-                workContent.publishDate = workContent.publishDate.toUnix()
-                workContent.effectiveDate = workContent.effectiveDate.toUnix()
-                delete workContent.batchId
-                delete workContent.brandId
+            let tasks = workList.map(workInfo=> {
+                let workContent = {
+                    workId: workInfo.workId,
+                    workName: workInfo.workName,
+                    publishDate: workInfo.publishDate.toUnix(),
+                    effectiveDate: workInfo.effectiveDate.toUnix(),
+                    workContent: workInfo.workContent
+                };
+                messageModel.brandId = workInfo.brandId
                 let messageContent = {
                     content: workContent,
-                    attach: batch.key || ''
+                    attach: workInfo.workId || ''
                 }
                 return dbContents.workSequelize.workMembers.findAll({
                     raw: true,
                     attributes: [['userId', 'receiverId'], ['userName', 'receiverName']],
-                    where: {workId: {$in: batch.value.map(m=>m.workId)}, status: 0}
+                    where: {workId: workInfo.workId, status: 0}
                 }).then(userList=> {
                     return sendMsgHelper.sendMsg(messageModel, messageContent, userList)
                 }).then(msgId=> {
-                    dbContents.workSequelize.workBatch.update({pushStatus: 1}, {where: {batchId: batch.key}})
+                    dbContents.workSequelize.workBatch.update({pushStatus: 1}, {where: {batchId: workInfo.batchId}})
                     return msgId
                 }).catch(err=> {
-                    dbContents.workSequelize.workBatch.update({pushStatus: 2}, {where: {batchId: batch.key}})
+                    dbContents.workSequelize.workBatch.update({pushStatus: 2}, {where: {batchId: workInfo.batchId}})
                 })
             })
             return Promise.all(tasks)
+        }).then(resolve).catch(reject)
+    })
+}
+
+//催收作业事件
+module.exports.workReminderHandler = function (workModel, userId) {
+    workModel.userId = userId;
+    return new Promise(function (resolve, reject) {
+        dbContents.workSequelize.eworks.findOne({
+            raw: true,
+            attributes: ['workName', 'publishDate', 'effectiveDate', 'brandId',
+                [dbContents.Sequelize.literal('(SELECT GROUP_CONCAT(resourceName) FROM eworkcontents where workId = eworks.workId)'), 'workContent']],
+            where: {workId: workModel.workId, publishUserId: workModel.userId}
+        }).then(workInfo=> {
+            if (!workInfo) {
+                resolve()
+                return
+            }
+            let messageModel = {
+                title: "作业提醒",
+                msgType: msgEnum.msgTypeEnum.workRemind,
+                senderId: workSenderId,
+                senderName: workSenderName,
+                receiverType: msgEnum.receiverTypeEnum.toIndividual,
+                msgIntr: "老师还没有收到你的作业,请尽快提交!",
+                brandId: workInfo.brandId
+            }
+            let messageContent = {
+                content: {
+                    workId: workModel.workId,
+                    workName: workInfo.workName,
+                    publishDate: workInfo.publishDate.toUnix(),
+                    effectiveDate: workInfo.effectiveDate.toUnix(),
+                    workContent: workInfo.workContent
+                },
+                attach: workModel.workId
+            }
+            return dbContents.workSequelize.workMembers.findAll({
+                raw: true,
+                attributes: [['userId', 'receiverId'], ['userName', 'receiverName']],
+                where: {workId: workModel.workId, status: 0}
+            }).then(userList=> {
+                return sendMsgHelper.sendMsg(messageModel, messageContent, userList)
+            })
         }).then(resolve).catch(reject)
     })
 }

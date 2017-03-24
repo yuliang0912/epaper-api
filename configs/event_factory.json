@@ -33,6 +33,13 @@
         "description": "作业即将过期提醒"
       },
       {
+        "name": "workReminder",
+        "eventHandler": [
+          "workReminderHandler"
+        ],
+        "description": "催收作业事件"
+      },
+      {
         "name": "corrrectWork",
         "eventHandler": [
           "corrrectWorkHandler"

@@ -9,6 +9,7 @@ var amqp = require('amqp');
 var exchange, isReady = false;
 var config = require('../../configs/main').msgRabbitMq
 var conn = amqp.createConnection(config.connOptions, config.implOptions);
+var shutdown = require('../../lib/shutdown')
 
 conn.on('close', function () {
     isReady = false
@@ -41,6 +42,10 @@ conn.on('error', function (err) {
     console.log("rabbitMQ error," + err.toString());
 })
 
+conn.on('disconnect', function () {
+    console.log("rabbitMQ disconnect");
+})
+
 //发送消息到MQ
 module.exports.publishMsg = function (dataStr) {
     return new Promise(function (resolve, reject) {
@@ -54,10 +59,10 @@ module.exports.publishMsg = function (dataStr) {
     });
 }
 
-process.on('SIGINT', function () {
-    if (isReady) {
-        conn.end()
-        conn.destroy()
-    }
-    process.exit(0);
+//程序关闭时,自动关闭连接
+shutdown.register(function () {
+    conn.setImplOptions({reconnect: false})
+    conn.disconnect()
+    conn.end()
+    conn.destroy()
 })

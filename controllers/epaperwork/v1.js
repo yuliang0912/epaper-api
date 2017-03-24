@@ -7,7 +7,6 @@ var workHelper = require('./../../proxy/epaperwork/work_helper');
 var eventFactory = require('./../../proxy/event_factory/event_factory')
 var utils = require('../../lib/api_utils')
 
-
 module.exports = {
     //作业相关事件触发器
     workEventTriggler: function *() {
@@ -19,10 +18,14 @@ module.exports = {
         if (!eventFactory.workEvent) {
             this.error('作业事件已从配置中取消或者更改', 101)
         }
+
         if (!eventFactory.workEvent.eventNameArray.some(t=>t === eventName)) {
             this.error('未找到事件' + eventName, 101)
         }
-        eventFactory.workEvent.emit(eventName, eventArgs)
+
+        var userId = this.request.userId;
+
+        eventFactory.workEvent.emit(eventName, eventArgs, userId)
         this.success(1)
     },
     //按批次获取布置的作业
@@ -314,7 +317,14 @@ module.exports = {
         if (!doWorkAnswer) {
             return this.success([]);
         }
-        doWorkAnswer.correctContent = JSON.parse(doWorkAnswer.correctContent);
+
+        if (doWorkAnswer.correctContent) {
+            try {
+                doWorkAnswer.correctContent = JSON.parse(doWorkAnswer.correctContent);
+            } catch (e) {
+                doWorkAnswer.correctContent = []
+            }
+        }
 
         if (Array.isArray(doWorkAnswer.correctContent) && doWorkAnswer.correctContent.length > 0) {
             this.success(doWorkAnswer.correctContent)
