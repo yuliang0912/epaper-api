@@ -62,14 +62,15 @@ module.exports = {
      * 
      */
     getLatest: function* () {
-        var brandId = this.checkQuery('brandId').notEmpty().toInt().value;
+        let brandId = this.checkQuery('brandId').notEmpty().toInt().value;
         let serviceId = this.checkQuery('serviceId').value;
         let packageId = this.checkQuery('packageId').value;
         let recordNum = this.checkQuery('recordNum').value || 1;
-        var userId = this.request.userId;
+        let userId = this.request.userId;
         this.errors && this.validateError();
         let resArr = [];
         if(!!packageId){
+            // 传递的参数指定了packageId + serviceId, 直接查询并返回
             let detail = yield getPackageInfoById(packageId, userId);
             let service = yield getServiceInfoById(serviceId, userId);
             detail.serviceId = serviceId;
@@ -77,8 +78,7 @@ module.exports = {
             resArr.push(detail);
             return this.success(resArr);
         }
-        // TODO: 查询资源包详情
-        // 1. 查询packageId
+        // TODO: 查询资源包详情, 根据brandId + userId查询使用记录(packageId + serviceId)列表, updateAt倒序
         let record = yield this.dbContents.workSequelize.usedpkgrecords.findOne({
             attributes: ['id', 'userId', 'brandId', 'serviceId', 'packageId'],
             where: {
@@ -105,6 +105,31 @@ module.exports = {
             }
         }
         return this.error('资源无效');
+    },
+
+    /**
+     * 查询最近使用过的[服务+资源]列表
+     * 
+     * @returns 
+     */
+    getLatestServieRecords: function* (){
+        let brandId = this.checkQuery('brandId').notEmpty().toInt().value;
+        let recordNum = this.checkQuery('recordNum').toInt().value || 4;
+        let userId = this.request.userId;
+        let records = yield this.dbContents.workSequelize.usedpkgrecords.findAll({
+            attributes: ['userId', 'brandId', 'serviceId', 'packageId'],
+            where: {
+                userId,
+                brandId,
+                status: 0
+            },
+            limit: recordNum,
+            order: "updateAt DESC"
+        });
+        if(records && records.length > 0){
+            return this.success(records);
+        }
+        return this.error('没有有效使用记录');
     }
 }
 
