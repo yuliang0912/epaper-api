@@ -104,7 +104,7 @@ module.exports = {
                 return this.success(resArr);
             }
         }
-        return this.error('资源无效');
+        return this.error('书本无效或不存在');
     },
 
     /**
