@@ -164,7 +164,7 @@ function getPackageInfoById(packageId, userId) {
 
 //根据serviceId获取服务详情
 function getServiceInfoById(serviceId, userId) {
-    let url = 'http://10.170.251.29:8866/jfyservice/getbyid';
+    let url = 'http://100.114.31.179:8866/jfyservice/getbyid';
     if(config.env == 'development') url = 'http://eapi.ciwong.com/gateway/v1/jfyservice/getbyid?accessToken=0000936ab763407bbeab510204983cac7cbe54cb&clientId=100039';
     return new Promise(function (resolve, reject) {
         request.get(url, {
