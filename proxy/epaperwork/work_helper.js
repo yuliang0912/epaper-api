@@ -137,3 +137,31 @@ module.exports.getProductInfo = function (productIds) {
     })
 }
 
+//根据classId获取班级成员列表
+module.exports.getClassMembers = function(classId, userId) {
+    let request = require('request');
+    let url = 'http://100.114.31.171:19014/relation/class/get_members';
+    return new Promise(function (resolve, reject) {
+        request.get(url, {
+            auth: {
+                user: userId + '', // 必须为字符串
+                pass: '1',
+                sendImmediately: true
+            },
+            qs: {
+                _classId: classId
+            }
+        }, function (err, response, body) {
+            if (err) {
+                return reject(err)
+            }
+            var body = JSON.parse(body)
+            if (body.ret == 0 && body.errcode == 0) {
+                resolve(body.data)
+            } else {
+                reject(body.msg)
+            }
+        });
+    })
+}
+

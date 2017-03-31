@@ -7,6 +7,7 @@ var Sequelize = require('sequelize');
 var workHelper = require('./../../proxy/epaperwork/work_helper');
 var eventFactory = require('./../../proxy/event_factory/event_factory')
 var utils = require('../../lib/api_utils')
+var work_helper = require('../../proxy/epaperwork/work_helper');
 
 module.exports = {
     //作业相关事件触发器
@@ -603,6 +604,7 @@ module.exports = {
         // 2.查询本次作业信息(by workId), 包括内容列表信息
         // 3.查询班级成员列表(by classId)
         let contentId = this.checkQuery('contentId').notEmpty().toInt().value;
+        let userId = this.request.userId;
         this.errors && this.validateError();
         let result;
         let work;
@@ -655,8 +657,6 @@ module.exports = {
                 where: {status: 0}
             });
             if(work){
-                // TODO: 查询班级成员列表
-                let classId = work.classId;
                 // 查询作业内容列表
                 contentList = yield this.dbContents.workSequelize
                 .workContents
@@ -716,6 +716,16 @@ module.exports = {
                                     break;
                             }
                         });
+                        // TODO: 查询班级成员列表, 确定未被布置作业的学生
+                        let classId = work.classId;
+                        classMembers = yield work_helper.getClassMembers(classId, userId);
+                        let unreceivers = [];
+                        classMembers.forEach(cm=>{
+                            let t = receivers.find(r=>r.userId==cm.userId);
+                            if(!t){
+                                unreceivers.push(cm);
+                            }
+                        });
                         // 统计(最高, 最低, 平均分, 优秀率, 及格率)
                         let max = ls.max(submitRecords, 'actualScore').actualScore;
                         let min = ls.min(submitRecords, 'actualScore').actualScore;
@@ -731,7 +741,7 @@ module.exports = {
                             r = r.dataValues;
                             records.push(Object.assign({index: currentIndex}, r));
                         });
-                        this.success({ work, currentContent, records: records, statistics });
+                        this.success({ work, currentContent, unreceivers, receivers, statistics, records: records });
                         return;
                     }
                 }
@@ -747,6 +757,7 @@ module.exports = {
     getEworkScoreStatistics: function *(){
         // 1.查询本次作业信息(by workId), 包括内容列表信息
         let workId = this.checkQuery('workId').notEmpty().toInt().value;
+        let userId = this.request.userId;
         this.errors && this.validateError();
         let result;
         let work;
@@ -766,8 +777,6 @@ module.exports = {
             where: {status: 0}
         });
         if(work){
-            // TODO: 查询班级成员列表
-            let classId = work.classId;
             // 查询作业内容列表
             contentList = yield this.dbContents.workSequelize
             .workContents
@@ -794,7 +803,6 @@ module.exports = {
                 }
             });
             if(receivers && receivers.length > 0){
-                classMembers = classMembers || receivers.map(r=> {return {userId: r.userId, userName: r.userName}}) || [];
                 // 查询作业内容提交记录列表
                 submitRecords = yield this.dbContents.workSequelize
                 .doEworks
@@ -852,6 +860,16 @@ module.exports = {
                             scoreOfMembers.push(scoreOfMember);
                         }
                     }
+                    // TODO: 查询班级成员列表, 确定未被布置作业的学生
+                    let classId = work.classId;
+                    classMembers = yield work_helper.getClassMembers(classId, userId);
+                    let unreceivers = [];
+                    classMembers.forEach(cm=>{
+                        let t = receivers.find(r=>r.userId==cm.userId);
+                        if(!t){
+                            unreceivers.push(cm);
+                        }
+                    });
                     // 统计(最高, 最低, 平均分)
                     let max = ls.max(scoreOfMembers, 'totalScore').totalScore;
                     let min = ls.min(scoreOfMembers, 'totalScore').totalScore;
@@ -862,7 +880,7 @@ module.exports = {
                     sortRes.forEach(r=>{
                         r.index = sortRes.indexOf(r) + 1;
                     });
-                    this.success({ work, header, records: sortRes, statistics });
+                    this.success({ work, header, unreceivers, receivers, records: sortRes, statistics });
                     return;
                 }
             }
