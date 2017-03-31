@@ -1,6 +1,7 @@
 "use strict"
 
 var _ = require('underscore');
+var ls = require('lodash');
 var Promise = require('bluebird')
 var Sequelize = require('sequelize');
 var workHelper = require('./../../proxy/epaperwork/work_helper');
@@ -592,6 +593,282 @@ module.exports = {
                 break;
         }
         this.success(coefficient)
+    },
+    /**
+     * 获取一个作业内容的统计成绩
+     * @contentId
+     */
+    getEworkContentScoreStatistics: function *(){
+        // 1.查询单个作业内容(by contentId)
+        // 2.查询本次作业信息(by workId), 包括内容列表信息
+        // 3.查询班级成员列表(by classId)
+        let contentId = this.checkQuery('contentId').notEmpty().toInt().value;
+        this.errors && this.validateError();
+        let result;
+        let work;
+        let contentList;
+        let receivers;
+        let submitRecords;
+        let classMembers;
+        let statistics;
+        let currentContent = yield this.dbContents.workSequelize.workContents.findById(contentId, {
+            raw: true,
+            attributes: ['contentId'
+            , 'batchId'
+            , [Sequelize.literal('CONCAT(workId)')
+            , 'workId']
+            , [Sequelize.literal('CONCAT(packageId)')
+            , 'packageId']
+            , 'cId'
+            , 'moduleId'
+            , 'versionId'
+            , 'parentVersionId'
+            , 'resourceType'
+            , 'resourceName']
+        });
+        if(currentContent){
+            let moduleId = parseInt(currentContent.moduleId); // 10 同步跟读 15 听说模考 124 线上作答 126 视频教程
+            currentContent.score = 100;
+            switch (moduleId) {
+                case 10:
+                    currentContent.moduleName = '同步跟读';
+                    break;
+                case 15:
+                    currentContent.moduleName = '听说模考';
+                    currentContent.score = 15;
+                case 124:
+                    currentContent.moduleName = '线上作答';
+                case 126:
+                    currentContent.moduleName = '视频教程';
+                default:
+                    break;
+            }
+            let workId = currentContent.workId;
+            work = yield this.dbContents.workSequelize
+            .eworks
+            .findById(workId, {
+                raw: true,
+                attributes: [
+                    [Sequelize.literal('CONCAT(workId)'), 'workId'], 
+                    'workName', 
+                    [Sequelize.literal('CONCAT(classId)'), 'classId']],
+                where: {status: 0}
+            });
+            if(work){
+                // TODO: 查询班级成员列表
+                let classId = work.classId;
+                // 查询作业内容列表
+                contentList = yield this.dbContents.workSequelize
+                .workContents
+                .findAll({
+                    attributes: [
+                        'contentId',
+                        'resourceName'
+                    ],
+                    where: {
+                        workId
+                    }
+                });
+                work.contentList = contentList;
+                // 查询作业接收者列表
+                receivers = yield this.dbContents.workSequelize
+                .workMembers
+                .findAll({
+                    attributes: [[Sequelize.literal('CONCAT(workId)'), 'workId'], 'userId', 'userName', 'status', 'isRead'],
+                    where: {
+                        workId
+                    }
+                });
+                if(receivers && receivers.length > 0){
+                    classMembers = classMembers || receivers.map(r=> {return {userId: r.userId, userName: r.userName}}) || [];
+                    // 查询作业内容提交记录列表
+                    submitRecords = yield this.dbContents.workSequelize
+                    .doEworks
+                    .findAll({
+                        attributes: [[Sequelize.literal('CONCAT(doWorkId)'), 'doWorkId']
+                        , 'userId', 'userName'
+                        , [Sequelize.literal('CONCAT(packageId)'), 'packageId']
+                        , 'cId', 'moduleId', 'versionId', 'resourceName', 'parentVersionId', 'resourceType'
+                        , 'submitDate'
+                        , [Sequelize.literal('CONCAT(workId)'), 'workId']
+                        , 'workScore'
+                        , 'actualScore'],
+                        where: {
+                            workId,
+                            packageId: currentContent.packageId,
+                            cId: currentContent.cId,
+                            moduleId: currentContent.moduleId,
+                            versionId: currentContent.versionId,
+                            parentVersionId: currentContent.parentVersionId,
+                            resourceType: currentContent.resourceType,
+                            userId: {$in: receivers.map(r=>r.userId)}
+                        }
+                    });
+                    if(submitRecords && submitRecords.length){
+                        submitRecords.forEach(r=>{
+                            let mid = parseInt(r.moduleId);
+                            switch (mid) {
+                                case 15: // 听说模考
+                                    r.workScore = 15;
+                                    break;
+                                default: // 其它
+                                    r.workScore = 100;
+                                    break;
+                            }
+                        });
+                        // 统计(最高, 最低, 平均分, 优秀率, 及格率)
+                        let max = ls.max(submitRecords, 'actualScore').actualScore;
+                        let min = ls.min(submitRecords, 'actualScore').actualScore;
+                        let scores = submitRecords.map(r=>r.actualScore);
+                        let average = ls.sum(scores) / submitRecords.length;
+                        let passRate = ls.filter(submitRecords, (sr)=>sr.actualScore>=(currentContent.score*0.6)).length / submitRecords.length;
+                        let excellentRate = ls.filter(submitRecords, (sr)=>sr.actualScore>=(currentContent.score*0.8)).length / submitRecords.length;
+                        statistics = {max, min, average, passRate, excellentRate};
+                        let sortRes = ls.sortByOrder(submitRecords, ['actualScore'], ['desc']);
+                        let records = [];
+                        sortRes.forEach(r=>{
+                            let currentIndex = sortRes.indexOf(r) + 1;
+                            r = r.dataValues;
+                            records.push(Object.assign({index: currentIndex}, r));
+                        });
+                        this.success({ work, currentContent, records: records, statistics });
+                        return;
+                    }
+                }
+
+            }
+        }
+        this.error('无有效记录');
+    },
+    /**
+     * 获取一次作业的统计成绩
+     * @workId
+     */
+    getEworkScoreStatistics: function *(){
+        // 1.查询本次作业信息(by workId), 包括内容列表信息
+        let workId = this.checkQuery('workId').notEmpty().toInt().value;
+        this.errors && this.validateError();
+        let result;
+        let work;
+        let contentList;
+        let receivers;
+        let submitRecords;
+        let classMembers;
+        let statistics;
+        work = yield this.dbContents.workSequelize
+        .eworks
+        .findById(workId, {
+            raw: true,
+            attributes: [
+                [Sequelize.literal('CONCAT(workId)'), 'workId'], 
+                'workName', 
+                [Sequelize.literal('CONCAT(classId)'), 'classId']],
+            where: {status: 0}
+        });
+        if(work){
+            // TODO: 查询班级成员列表
+            let classId = work.classId;
+            // 查询作业内容列表
+            contentList = yield this.dbContents.workSequelize
+            .workContents
+            .findAll({
+                attributes: [
+                    'contentId',
+                    [Sequelize.literal('CONCAT(workId)'), 'workId'],
+                    [Sequelize.literal('CONCAT(packageId)'), 'packageId']
+                    , 'cId', 'moduleId', 'versionId', 'resourceName', 'parentVersionId', 'resourceType', 'resourceName'
+                ],
+                where: {
+                    workId
+                }
+            });
+            contentList = ls.sortBy(contentList, 'contentId');
+            work.contentList = contentList;
+            // 查询作业接收者列表
+            receivers = yield this.dbContents.workSequelize
+            .workMembers
+            .findAll({
+                attributes: [[Sequelize.literal('CONCAT(workId)'), 'workId'], 'userId', 'userName', 'status', 'isRead'],
+                where: {
+                    workId
+                }
+            });
+            if(receivers && receivers.length > 0){
+                classMembers = classMembers || receivers.map(r=> {return {userId: r.userId, userName: r.userName}}) || [];
+                // 查询作业内容提交记录列表
+                submitRecords = yield this.dbContents.workSequelize
+                .doEworks
+                .findAll({
+                    attributes: [[Sequelize.literal('CONCAT(doWorkId)'), 'doWorkId']
+                    , 'userId', 'userName'
+                    , [Sequelize.literal('CONCAT(packageId)'), 'packageId']
+                    , 'cId', 'moduleId', 'versionId', 'resourceName', 'parentVersionId', 'resourceType'
+                    , 'submitDate'
+                    , [Sequelize.literal('CONCAT(workId)'), 'workId']
+                    , 'workScore'
+                    , 'actualScore'],
+                    where: {
+                        workId,
+                        userId: {$in: receivers.map(r=>r.userId)}
+                    }
+                });
+                if(submitRecords && submitRecords.length){
+                    submitRecords.forEach(r=>{
+                        let mid = parseInt(r.moduleId);
+                        switch (mid) {
+                            case 15: // 听说模考
+                                r.workScore = 15;
+                                break;
+                            default: // 其它
+                                r.workScore = 100;
+                                break;
+                        }
+                    });
+                    // 以用户分组统计
+                    let groups = ls.groupBy(submitRecords, 'userId');
+                    let header = ['排名', '姓名'];
+                    let contentNames = contentList.map(c=>c.resourceName);
+                    header = header.concat(contentNames);
+                    header.push('总分');
+                    let scoreOfMembers = [];
+                    for (let key in groups) {
+                        if (groups.hasOwnProperty(key)) {
+                            let element = groups[key];
+                            let member = element[0];
+                            let scoreOfMember = {};
+                            let scores = element.map(e=>e.actualScore);
+                            scoreOfMember.totalScore = ls.sum(scores);
+                            scoreOfMember.userId = member.userId;
+                            scoreOfMember.userName = member.userName;
+                            contentList.forEach(c=>{
+                                scoreOfMember[c.contentId + '-' + c.resourceName] = 0;
+                                let r = ls.find(element, (e)=>e.packageId==c.packageId&&e.cId==c.cId&&e.versionId==c.versionId&&e.parentVersionId==c.parentVersionId&&e.resourceType==c.resourceType);
+                                if(r){
+                                    r.contentId = c.contentId;
+                                    scoreOfMember[c.contentId + '-' + c.resourceName] = r.actualScore;
+                                }
+                            });
+
+                            scoreOfMembers.push(scoreOfMember);
+                        }
+                    }
+                    // 统计(最高, 最低, 平均分)
+                    let max = ls.max(scoreOfMembers, 'totalScore').totalScore;
+                    let min = ls.min(scoreOfMembers, 'totalScore').totalScore;
+                    let scores = scoreOfMembers.map(r=>r.totalScore);
+                    let average = ls.sum(scores) / scoreOfMembers.length;
+                    statistics = {max, min, average};
+                    let sortRes = ls.sortByOrder(scoreOfMembers, ['totalScore'], ['desc']);
+                    sortRes.forEach(r=>{
+                        r.index = sortRes.indexOf(r) + 1;
+                    });
+                    this.success({ work, header, records: sortRes, statistics });
+                    return;
+                }
+            }
+
+        }
+        this.error('无有效记录');
     }
 }
 
