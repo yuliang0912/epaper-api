@@ -69,6 +69,7 @@ module.exports = {
                 publishUserId: item.publishUserId,
                 publishUserName: item.publishUserName,
                 publishDate: item.publishDate.valueOf() / 1000,
+                sendDate: item.sendDate.valueOf() / 1000,
                 effectiveDate: item.effectiveDate.valueOf() / 1000,
                 workList: workList.filter(work=> {
                     return work.batchId == item.batchId;

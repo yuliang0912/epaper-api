@@ -37,6 +37,10 @@ module.exports = function (workSequelize) {
                 type: Sequelize.DATE,
                 defaultValue: Sequelize.NOW
             },
+            sendDate: {
+                type: Sequelize.DATE,
+                defaultValue: Sequelize.NOW
+            },
             effectiveDate: {
                 type: Sequelize.DATE,
                 allowNull: false

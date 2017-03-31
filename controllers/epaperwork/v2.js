@@ -14,7 +14,7 @@ module.exports.getPublishWorkRecordsForWeiXin = function *() {
 
     var workList = yield this.dbContents.workSequelize.eworks.findAndCount({
         raw: true,
-        attributes: [[Sequelize.literal('CONCAT(workId)'), 'workId'], 'totalNum', 'workType', ['tags', 'reviceObject'], 'workName', 'publishDate', 'effectiveDate'],
+        attributes: [[Sequelize.literal('CONCAT(workId)'), 'workId'], 'totalNum', 'workType', ['tags', 'reviceObject'], 'workName', 'publishDate', 'sendDate', 'effectiveDate'],
         where: {brandId: brandId, publishUserId: this.request.userId, status: 0},
         offset: (page - 1) * pageSize,
         limit: pageSize,
@@ -63,6 +63,7 @@ module.exports.getPublishWorkRecordsForWeiXin = function *() {
                 totalNum: item.totalNum,
                 reviceObject: item.reviceObject,
                 publishDate: item.publishDate.valueOf() / 1000,
+                sendDate: item.sendDate.valueOf() / 1000,
                 effectiveDate: item.effectiveDate.valueOf() / 1000,
                 workContents: workContentList.filter(content=> {
                     return content.workId == item.workId;
