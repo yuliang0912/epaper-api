@@ -690,7 +690,7 @@ module.exports = {
                         , 'userId', 'userName'
                         , [Sequelize.literal('CONCAT(packageId)'), 'packageId']
                         , 'cId', 'moduleId', 'versionId', 'resourceName', 'parentVersionId', 'resourceType'
-                        , 'submitDate'
+                        , [Sequelize.literal('UNIX_TIMESTAMP(submitDate)'), 'submitDate']
                         , [Sequelize.literal('CONCAT(workId)'), 'workId']
                         , 'workScore'
                         , 'actualScore'],
@@ -812,7 +812,7 @@ module.exports = {
                     , 'userId', 'userName'
                     , [Sequelize.literal('CONCAT(packageId)'), 'packageId']
                     , 'cId', 'moduleId', 'versionId', 'resourceName', 'parentVersionId', 'resourceType'
-                    , 'submitDate'
+                    , [Sequelize.literal('UNIX_TIMESTAMP(submitDate)'), 'submitDate']
                     , [Sequelize.literal('CONCAT(workId)'), 'workId']
                     , 'workScore'
                     , 'actualScore'],
