@@ -611,6 +611,8 @@ module.exports = {
         let work;
         let contentList;
         let receivers;
+        let unreceivers = [];
+        let classInfo = {};
         let submitRecords;
         let classMembers;
         let statistics;
@@ -658,6 +660,9 @@ module.exports = {
                 where: {status: 0}
             });
             if(work){
+                classMembers = yield work_helper.getClassMembers(work.classId, userId);
+                classInfo.classId = work.classId;
+                classInfo.members = classMembers;
                 // 查询作业内容列表
                 contentList = yield this.dbContents.workSequelize
                 .workContents
@@ -680,8 +685,14 @@ module.exports = {
                         workId
                     }
                 });
+                // 筛选
+                classMembers.forEach(cm=>{
+                    let t = receivers.find(r=>r.userId==cm.userId);
+                    if(!t){
+                        unreceivers.push(cm);
+                    }
+                });
                 if(receivers && receivers.length > 0){
-                    classMembers = classMembers || receivers.map(r=> {return {userId: r.userId, userName: r.userName}}) || [];
                     // 查询作业内容提交记录列表
                     submitRecords = yield this.dbContents.workSequelize
                     .doEworks
@@ -717,16 +728,6 @@ module.exports = {
                                     break;
                             }
                         });
-                        // TODO: 查询班级成员列表, 确定未被布置作业的学生
-                        let classId = work.classId;
-                        classMembers = yield work_helper.getClassMembers(classId, userId);
-                        let unreceivers = [];
-                        classMembers.forEach(cm=>{
-                            let t = receivers.find(r=>r.userId==cm.userId);
-                            if(!t){
-                                unreceivers.push(cm);
-                            }
-                        });
                         // 统计(最高, 最低, 平均分, 优秀率, 及格率)
                         let max = ls.max(submitRecords, 'actualScore').actualScore;
                         let min = ls.min(submitRecords, 'actualScore').actualScore;
@@ -742,9 +743,12 @@ module.exports = {
                             r = r.dataValues;
                             records.push(Object.assign({index: currentIndex}, r));
                         });
-                        this.success({ work, currentContent, unreceivers, receivers, statistics, records: records });
+                        this.success({ work, currentContent, unreceivers, receivers, classInfo, statistics, records: records });
                         return;
                     }
+                    // 没有成绩记录
+                    this.success({ work, currentContent, unreceivers, receivers, classInfo });
+                    return;
                 }
 
             }
@@ -764,8 +768,11 @@ module.exports = {
         let work;
         let contentList;
         let receivers;
+        let unreceivers = [];
         let submitRecords;
         let classMembers;
+        let classInfo = {};
+        let header = ['排名', '姓名'];
         let statistics;
         work = yield this.dbContents.workSequelize
         .eworks
@@ -778,6 +785,11 @@ module.exports = {
             where: {status: 0}
         });
         if(work){
+            // TODO: 查询班级成员列表, 确定未被布置作业的学生
+            let classId = work.classId;
+            classMembers = yield work_helper.getClassMembers(classId, userId);
+            classInfo.classId = classId;
+            classInfo.members = classMembers;
             // 查询作业内容列表
             contentList = yield this.dbContents.workSequelize
             .workContents
@@ -793,6 +805,10 @@ module.exports = {
                 }
             });
             contentList = ls.sortBy(contentList, 'contentId');
+            // 构建header
+            let cl = contentList.map(c=>{return { id: c.contentId, name: c.resourceName}});
+            header.push(cl);
+            header.push('总分');
             work.contentList = contentList;
             // 查询作业接收者列表
             receivers = yield this.dbContents.workSequelize
@@ -801,6 +817,13 @@ module.exports = {
                 attributes: [[Sequelize.literal('CONCAT(workId)'), 'workId'], 'userId', 'userName', 'status', 'isRead'],
                 where: {
                     workId
+                }
+            });
+            // 筛选未被布置者
+            classMembers.forEach(cm=>{
+                let t = receivers.find(r=>r.userId==cm.userId);
+                if(!t){
+                    unreceivers.push(cm);
                 }
             });
             if(receivers && receivers.length > 0){
@@ -835,10 +858,6 @@ module.exports = {
                     });
                     // 以用户分组统计
                     let groups = ls.groupBy(submitRecords, 'userId');
-                    let header = ['排名', '姓名'];
-                    let cl = contentList.map(c=>{return { id: c.contentId, name: c.resourceName}});
-                    header.push(cl);
-                    header.push('总分');
                     let scoreOfMembers = [];
                     for (let key in groups) {
                         if (groups.hasOwnProperty(key)) {
@@ -862,16 +881,6 @@ module.exports = {
                             scoreOfMembers.push(scoreOfMember);
                         }
                     }
-                    // TODO: 查询班级成员列表, 确定未被布置作业的学生
-                    let classId = work.classId;
-                    classMembers = yield work_helper.getClassMembers(classId, userId);
-                    let unreceivers = [];
-                    classMembers.forEach(cm=>{
-                        let t = receivers.find(r=>r.userId==cm.userId);
-                        if(!t){
-                            unreceivers.push(cm);
-                        }
-                    });
                     // 统计(最高, 最低, 平均分)
                     let max = ls.max(scoreOfMembers, 'totalScore').totalScore;
                     let min = ls.min(scoreOfMembers, 'totalScore').totalScore;
@@ -882,9 +891,12 @@ module.exports = {
                     sortRes.forEach(r=>{
                         r.index = sortRes.indexOf(r) + 1;
                     });
-                    this.success({ work, header, unreceivers, receivers, records: sortRes, statistics });
+                    this.success({ work, header, unreceivers, receivers, classInfo, records: sortRes, statistics });
                     return;
                 }
+                // 没有成绩记录
+                this.success({ work, header, unreceivers, receivers, classInfo });
+                return;
             }
 
         }
