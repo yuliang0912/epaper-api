@@ -836,8 +836,8 @@ module.exports = {
                     // 以用户分组统计
                     let groups = ls.groupBy(submitRecords, 'userId');
                     let header = ['排名', '姓名'];
-                    let contentNames = contentList.map(c=>c.resourceName);
-                    header = header.concat(contentNames);
+                    let cl = contentList.map(c=>{return { id: c.contentId, name: c.resourceName}});
+                    header.push(cl);
                     header.push('总分');
                     let scoreOfMembers = [];
                     for (let key in groups) {
@@ -849,13 +849,14 @@ module.exports = {
                             scoreOfMember.totalScore = ls.sum(scores);
                             scoreOfMember.userId = member.userId;
                             scoreOfMember.userName = member.userName;
+                            scoreOfMember.tabDatas = [];
                             contentList.forEach(c=>{
-                                scoreOfMember[c.contentId + '-' + c.resourceName] = 0;
+                                let temp = { id: c.contentId, name: c.resourceName, score: 0};
                                 let r = ls.find(element, (e)=>e.packageId==c.packageId&&e.cId==c.cId&&e.versionId==c.versionId&&e.parentVersionId==c.parentVersionId&&e.resourceType==c.resourceType);
                                 if(r){
-                                    r.contentId = c.contentId;
-                                    scoreOfMember[c.contentId + '-' + c.resourceName] = r.actualScore;
+                                    temp.score = r.actualScore;
                                 }
+                                scoreOfMember.tabDatas.push(temp);
                             });
 
                             scoreOfMembers.push(scoreOfMember);
