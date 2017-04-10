@@ -115,14 +115,13 @@ module.exports = {
     getLatestServieRecords: function* (){
         let brandId = this.checkQuery('brandId').notEmpty().toInt().value;
         let recordNum = this.checkQuery('recordNum').toInt().value || 4;
+        let serviceId = this.checkQuery('serviceId').value;
         let userId = this.request.userId;
+        let where = {userId, brandId, status: 0};
+        if(serviceId) where.serviceId = serviceId;
         let records = yield this.dbContents.workSequelize.usedpkgrecords.findAll({
             attributes: ['userId', 'brandId', 'serviceId', 'packageId'],
-            where: {
-                userId,
-                brandId,
-                status: 0
-            },
+            where,
             limit: recordNum,
             order: "updateAt DESC"
         });
