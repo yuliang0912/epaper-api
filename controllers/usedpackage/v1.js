@@ -121,7 +121,9 @@ module.exports = {
         let where = {userId, brandId, status: 0};
         if(serviceId) where.serviceId = serviceId;
         let records = yield this.dbContents.workSequelize.usedpkgrecords.findAll({
-            attributes: ['userId', 'brandId', 'serviceId', 'packageId'],
+            attributes: ['userId', 'brandId', 'serviceId', 'packageId'
+            , [sequelize.literal('UNIX_TIMESTAMP(updateAt)'), 'updateAt']
+            , [sequelize.literal('UNIX_TIMESTAMP(createAt)'), 'createAt']],
             where,
             limit: recordNum,
             order: "updateAt DESC"
