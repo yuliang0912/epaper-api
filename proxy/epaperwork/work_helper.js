@@ -138,7 +138,7 @@ module.exports.getProductInfo = function (productIds) {
 }
 
 //根据classId获取班级成员列表
-module.exports.getClassMembers = function(classId, userId) {
+module.exports.getClassMembers = function(classId, userId, role) {
     let request = require('request');
     let url = 'http://100.114.31.171:19014/relation/class/get_members';
     return new Promise(function (resolve, reject) {
@@ -149,7 +149,8 @@ module.exports.getClassMembers = function(classId, userId) {
                 sendImmediately: true
             },
             qs: {
-                _classId: classId
+                _classId: classId,
+                role: role
             }
         }, function (err, response, body) {
             if (err) {

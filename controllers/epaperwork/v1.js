@@ -660,7 +660,7 @@ module.exports = {
                 where: {status: 0}
             });
             if(work){
-                classMembers = yield work_helper.getClassMembers(work.classId, userId);
+                classMembers = yield work_helper.getClassMembers(work.classId, userId, 1);
                 classInfo.classId = work.classId;
                 classInfo.members = classMembers;
                 // 查询作业内容列表
@@ -793,7 +793,7 @@ module.exports = {
         if(work){
             // 查询班级成员列表, 确定未被布置作业的学生
             let classId = work.classId;
-            classMembers = yield work_helper.getClassMembers(classId, userId);
+            classMembers = yield work_helper.getClassMembers(classId, userId, 1);
             classInfo.classId = classId;
             classInfo.members = classMembers;
             // 查询作业内容列表
