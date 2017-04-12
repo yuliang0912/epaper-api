@@ -716,6 +716,12 @@ module.exports = {
                             userId: {$in: receivers.map(r=>r.userId)}
                         }
                     });
+                    // 过滤无效的班级成员, classMembers, unreceivers, receivers, 
+                    let uids = classMembers.map(m=>m.userId);
+                    unreceivers = ls.filter(unreceivers, (u)=>{ return uids.indexOf(u.userId) > -1 });
+                    receivers = ls.filter(receivers, (u)=>{ return uids.indexOf(u.userId) > -1 });
+                    // 过滤无效的记录, classMembers, records
+                    submitRecords = ls.filter(submitRecords, (u)=>{ return uids.indexOf(u.userId) > -1 });
                     if(submitRecords && submitRecords.length){
                         submitRecords.forEach(r=>{
                             let mid = parseInt(r.moduleId);
@@ -785,7 +791,7 @@ module.exports = {
             where: {status: 0}
         });
         if(work){
-            // TODO: 查询班级成员列表, 确定未被布置作业的学生
+            // 查询班级成员列表, 确定未被布置作业的学生
             let classId = work.classId;
             classMembers = yield work_helper.getClassMembers(classId, userId);
             classInfo.classId = classId;
@@ -844,6 +850,12 @@ module.exports = {
                         userId: {$in: receivers.map(r=>r.userId)}
                     }
                 });
+                // 过滤无效的班级成员, classMembers, unreceivers, receivers, 
+                let uids = classMembers.map(m=>m.userId);
+                unreceivers = ls.filter(unreceivers, (u)=>{ return uids.indexOf(u.userId) > -1 });
+                receivers = ls.filter(receivers, (u)=>{ return uids.indexOf(u.userId) > -1 });
+                // 过滤无效的记录, classMembers, records
+                submitRecords = ls.filter(submitRecords, (u)=>{ return uids.indexOf(u.userId) > -1 });
                 if(submitRecords && submitRecords.length){
                     submitRecords.forEach(r=>{
                         let mid = parseInt(r.moduleId);
