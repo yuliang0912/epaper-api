@@ -713,7 +713,8 @@ module.exports = {
                             versionId: currentContent.versionId,
                             parentVersionId: currentContent.parentVersionId,
                             resourceType: currentContent.resourceType,
-                            userId: {$in: receivers.map(r=>r.userId)}
+                            userId: {$in: receivers.map(r=>r.userId)},
+                            delStatus: 0
                         }
                     });
                     // 过滤无效的班级成员, classMembers, unreceivers, receivers, 
@@ -847,7 +848,8 @@ module.exports = {
                     , 'actualScore'],
                     where: {
                         workId,
-                        userId: {$in: receivers.map(r=>r.userId)}
+                        userId: {$in: receivers.map(r=>r.userId)},
+                        delStatus: 0
                     }
                 });
                 // 过滤无效的班级成员, classMembers, unreceivers, receivers, 
