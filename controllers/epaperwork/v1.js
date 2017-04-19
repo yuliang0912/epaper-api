@@ -718,11 +718,11 @@ module.exports = {
                         }
                     });
                     // 过滤无效的班级成员, classMembers, unreceivers, receivers, 
-                    let uids = classMembers.map(m=>m.userId);
-                    unreceivers = ls.filter(unreceivers, (u)=>{ return uids.indexOf(u.userId) > -1 });
-                    receivers = ls.filter(receivers, (u)=>{ return uids.indexOf(u.userId) > -1 });
+                    // let uids = classMembers.map(m=>m.userId);
+                    // unreceivers = ls.filter(unreceivers, (u)=>{ return uids.indexOf(u.userId) > -1 });
+                    // receivers = ls.filter(receivers, (u)=>{ return uids.indexOf(u.userId) > -1 });
                     // 过滤无效的记录, classMembers, records
-                    submitRecords = ls.filter(submitRecords, (u)=>{ return uids.indexOf(u.userId) > -1 });
+                    // submitRecords = ls.filter(submitRecords, (u)=>{ return uids.indexOf(u.userId) > -1 });
                     if(submitRecords && submitRecords.length){
                         submitRecords.forEach(r=>{
                             let mid = parseInt(r.moduleId);
@@ -853,11 +853,11 @@ module.exports = {
                     }
                 });
                 // 过滤无效的班级成员, classMembers, unreceivers, receivers, 
-                let uids = classMembers.map(m=>m.userId);
-                unreceivers = ls.filter(unreceivers, (u)=>{ return uids.indexOf(u.userId) > -1 });
-                receivers = ls.filter(receivers, (u)=>{ return uids.indexOf(u.userId) > -1 });
+                // let uids = classMembers.map(m=>m.userId);
+                // unreceivers = ls.filter(unreceivers, (u)=>{ return uids.indexOf(u.userId) > -1 });
+                // receivers = ls.filter(receivers, (u)=>{ return uids.indexOf(u.userId) > -1 });
                 // 过滤无效的记录, classMembers, records
-                submitRecords = ls.filter(submitRecords, (u)=>{ return uids.indexOf(u.userId) > -1 });
+                // submitRecords = ls.filter(submitRecords, (u)=>{ return uids.indexOf(u.userId) > -1 });
                 if(submitRecords && submitRecords.length){
                     submitRecords.forEach(r=>{
                         let mid = parseInt(r.moduleId);
