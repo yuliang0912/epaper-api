@@ -664,6 +664,7 @@ module.exports = {
                 classInfo.classId = work.classId;
                 classInfo.members = classMembers;
                 // 查询作业内容列表
+                // 过滤掉moduleId为123, 126的模块内容
                 contentList = yield this.dbContents.workSequelize
                 .workContents
                 .findAll({
@@ -672,7 +673,8 @@ module.exports = {
                         'resourceName'
                     ],
                     where: {
-                        workId
+                        workId,
+                        moduleId: {$notIn: [123, 126]}
                     }
                 });
                 work.contentList = contentList;
@@ -798,6 +800,7 @@ module.exports = {
             classInfo.classId = classId;
             classInfo.members = classMembers;
             // 查询作业内容列表
+            // 过滤掉moduleId为123, 126的模块内容
             contentList = yield this.dbContents.workSequelize
             .workContents
             .findAll({
@@ -808,7 +811,8 @@ module.exports = {
                     , 'cId', 'moduleId', 'versionId', 'resourceName', 'parentVersionId', 'resourceType', 'resourceName'
                 ],
                 where: {
-                    workId
+                    workId,
+                    moduleId: {$notIn:[123, 126]}
                 }
             });
             contentList = ls.sortBy(contentList, 'contentId');
@@ -835,6 +839,7 @@ module.exports = {
             });
             if(receivers && receivers.length > 0){
                 // 查询作业内容提交记录列表
+                // 过滤掉moduleId为123, 126的模块内容
                 submitRecords = yield this.dbContents.workSequelize
                 .doEworks
                 .findAll({
@@ -849,7 +854,8 @@ module.exports = {
                     where: {
                         workId,
                         userId: {$in: receivers.map(r=>r.userId)},
-                        delStatus: 0
+                        delStatus: 0,
+                        moduleId: {$notIn: [123, 126]}
                     }
                 });
                 // 过滤无效的班级成员, classMembers, unreceivers, receivers, 
