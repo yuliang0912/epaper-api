@@ -112,22 +112,22 @@ module.exports = {
             brandId: brandId,
             receiverId: this.request.userId
         };
-        // let sql = "SELECT * FROM(\
-        //             SELECT msgmain.*,msgreceiver.msgStatus FROM msgmain\
-        //             LEFT JOIN msgreceiver on msgreceiver.msgId = msgmain.msgId\
-        //             WHERE receiverId = :receiverId AND msgmain.`status` <> 1\
-        //             AND brandId = :brandId ORDER BY msgmain.msgId DESC\
-        //         ) temp GROUP BY senderId";
+        let sql = "SELECT * FROM(\
+                    SELECT msgmain.*,msgreceiver.msgStatus FROM msgmain\
+                    LEFT JOIN msgreceiver on msgreceiver.msgId = msgmain.msgId\
+                    WHERE receiverId = :receiverId AND msgmain.`status` <> 1\
+                    AND brandId = :brandId ORDER BY msgmain.msgId DESC\
+                ) temp GROUP BY senderId";
 
-        //修改支持广播类型
-        let sql = `SELECT * FROM (SELECT * FROM (
-                      SELECT msgmain.*,msgreceiver.msgStatus FROM msgmain
-                      INNER JOIN msgreceiver on msgreceiver.msgId = msgmain.msgId AND msgmain.receiverType = 1
-                      WHERE receiverId = :receiverId AND msgmain.status <> 1 AND brandId = :brandId
-                      UNION ALL
-                      SELECT msgmain.*,1 FROM msgmain
-                      WHERE receiverType = 2 AND msgmain.status <> 1 AND brandId = :brandId
-                  ) Temp ORDER BY msgId DESC) Temp1 GROUP BY senderId`;
+        //修改支持广播类型(2017-4-13恢复以前)
+        // let sql = `SELECT * FROM (SELECT * FROM (
+        //               SELECT msgmain.*,msgreceiver.msgStatus FROM msgmain
+        //               INNER JOIN msgreceiver on msgreceiver.msgId = msgmain.msgId AND msgmain.receiverType = 1
+        //               WHERE receiverId = :receiverId AND msgmain.status <> 1 AND brandId = :brandId
+        //               UNION ALL
+        //               SELECT msgmain.*,1 FROM msgmain
+        //               WHERE receiverType = 2 AND msgmain.status <> 1 AND brandId = :brandId
+        //           ) Temp ORDER BY msgId DESC) Temp1 GROUP BY senderId`;
 
         var msgList = yield this.dbContents.messageSequelize.query(sql, {
             replacements: sqlParams,
@@ -174,24 +174,25 @@ module.exports = {
             end: page * pageSize
         };
 
-        // let baseSql = "SELECT {0} FROM msgreceiver\
-        //                 INNER JOIN msgmain ON msgmain.msgId = msgreceiver.msgId\
-        //                 INNER JOIN msgcontent ON msgcontent.msgId = msgreceiver.msgId\
-        //                 WHERE msgreceiver.receiverId = :receiverId\
-        //                 AND msgmain.senderId = :senderId AND msgmain.status <> 1\
-        //                 AND brandId = :brandId ORDER BY msgmain.MsgId DESC";
+        let baseSql = "SELECT {0} FROM msgreceiver\
+                        INNER JOIN msgmain ON msgmain.msgId = msgreceiver.msgId\
+                        INNER JOIN msgcontent ON msgcontent.msgId = msgreceiver.msgId\
+                        WHERE msgreceiver.receiverId = :receiverId\
+                        AND msgmain.senderId = :senderId AND msgmain.status <> 1\
+                        AND brandId = :brandId ORDER BY msgmain.MsgId DESC";
 
-        let baseSql = `SELECT {0} FROM (
-                         SELECT msgmain.*,msgreceiver.msgStatus,msgcontent.content FROM msgreceiver
-                         INNER JOIN msgmain ON msgmain.msgId = msgreceiver.msgId
-                         INNER JOIN msgcontent ON msgcontent.msgId = msgreceiver.msgId
-                         WHERE msgreceiver.receiverId = :receiverId
-                         AND msgmain.senderId = :senderId AND msgmain.status <> 1 AND brandId = :brandId 
-                         UNION ALL
-                         SELECT msgmain.*,1,msgcontent.content FROM msgmain 
-                         INNER JOIN msgcontent ON msgcontent.msgId = msgmain.msgId
-                         WHERE receiverType = 2 AND msgmain.status <> 1 AND brandId = :brandId AND senderId = :senderId
-                       ) as t ORDER BY msgId DESC`;
+        //2017-4-13恢复以前
+        // let baseSql = `SELECT {0} FROM (
+        //                  SELECT msgmain.*,msgreceiver.msgStatus,msgcontent.content FROM msgreceiver
+        //                  INNER JOIN msgmain ON msgmain.msgId = msgreceiver.msgId
+        //                  INNER JOIN msgcontent ON msgcontent.msgId = msgreceiver.msgId
+        //                  WHERE msgreceiver.receiverId = :receiverId
+        //                  AND msgmain.senderId = :senderId AND msgmain.status <> 1 AND brandId = :brandId
+        //                  UNION ALL
+        //                  SELECT msgmain.*,1,msgcontent.content FROM msgmain
+        //                  INNER JOIN msgcontent ON msgcontent.msgId = msgmain.msgId
+        //                  WHERE receiverType = 2 AND msgmain.status <> 1 AND brandId = :brandId AND senderId = :senderId
+        //                ) as t ORDER BY msgId DESC`;
 
         let sqlPage = format(baseSql, " count(*)  AS msgCount ");
 
@@ -292,6 +293,21 @@ module.exports = {
             where: {
                 receiverId: this.request.userId,
                 msgId: {$in: msgIds.split(',').map(m=>parseInt(m))}
+            }
+        }).then(data=> {
+            this.success(data[0] > 0);
+        })
+    },
+    //设置消息为已读状态
+    setReadByMsgType: function *() {
+        var msgType = this.checkQuery('msgType').toInt().value;
+        var brandId = this.checkQuery('brandId').toInt().value;
+        this.errors && this.validateError();
+
+        yield this.dbContents.messageSequelize.msgReceiver.update({msgStatus: 1}, {
+            where: {
+                receiverId: this.request.userId,
+                brandId, msgType
             }
         }).then(data=> {
             this.success(data[0] > 0);

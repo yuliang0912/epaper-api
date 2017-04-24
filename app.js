@@ -23,6 +23,7 @@ require('koa-validate')(app)
 require('./proxy/message/rabbit_helper')
 require('./task_schedule/work_effective_task').start();
 require('./task_schedule/message_push_mq_task').start();
+require('./task_schedule/clear_message_task').start();
 
 app.on('error', err=> {
     console.log('server error', err);

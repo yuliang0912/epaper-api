@@ -277,7 +277,8 @@ module.exports = {
         var workId = this.checkBody('workId').default(0).isNumeric().value;
         var cid = this.checkBody('cId').isNumeric().value;
         var packageId = this.checkBody('packageId').toInt().value;
-        var moduleId = this.checkBody('moduleId').in([123, 124]).toInt().value;
+        //123视频讲解作业已经从产品层面移除了.
+        var moduleId = this.checkBody('moduleId').in([124]).toInt().value;
         var versionId = this.checkBody('versionId').isNumeric().value;
         var resourceName = this.checkBody('resourceName').notEmpty().value;
         var parentVersionId = this.checkBody('parentVersionId').isNumeric().value;
@@ -291,19 +292,26 @@ module.exports = {
         var workAnswers = this.checkBody('workAnswers').toJson().value;
         var userName = this.checkBody('userName').notEmpty().value;
         var clientId = this.checkQuery('client_id').default(0).toInt().value;
+        var contentId = this.checkBody('contentId').default(0).toInt().value;
+        var workScore = this.checkBody('workScore').default(100).toFloat().value;
 
         this.errors && this.validateError();
         if (!Array.isArray(workAnswers)) {
             this.error('workAnswers数据格式错误!', 101)
         }
 
+        if (contentId > 0) {
+            var workContent = yield this.dbContents.workSequelize.workContents.findById(contentId);
+            if (!workContent || workContent.workId != workId) {
+                this.error('contentId错误或者与作业不匹配!', 101)
+            }
+            workScore = workContent.workScore;
+        }
+
         var doEwork = {
             workId, cid, packageId, moduleId, versionId, resourceName, parentVersionId, resourceType,
-            workLong, doWorkPackageUrl, actualScore, brandId, workType, classId, userName,
-            workScore: 100,
-            workStatus: 1,
-            sourceType: clientId,
-            insteadUserName: userName
+            workLong, doWorkPackageUrl, actualScore, brandId, workType, classId, userName, contentId,
+            workScore, workStatus: 1, sourceType: clientId, insteadUserName: userName
         };
         doEwork.userId = doEwork.insteadUserId = this.request.userId;
 

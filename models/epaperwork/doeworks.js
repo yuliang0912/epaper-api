@@ -59,6 +59,9 @@ module.exports = function (workSequelize) {
             workId: {
                 type: Sequelize.STRING
             },
+            contentId: {
+                type: Sequelize.INTEGER
+            },
             workScore: {
                 type: Sequelize.DECIMAL(6, 2),
                 defaultValue: 100

@@ -5,16 +5,16 @@
 var Sequelize = require('sequelize');
 var dbConfig =
     process.env.NODE_ENV === 'production' ?
-    require('./dbconfig_pro.json') :
-    process.env.NODE_ENV === 'test' ?
-    require('./dbconfig_test.json') :
-    require('./dbconfig.json')
+        require('./dbconfig_pro.json') :
+        process.env.NODE_ENV === 'test' ?
+            require('./dbconfig_test.json') :
+            require('./dbconfig.json')
 
-var msgDbContents = function() {
+var msgDbContents = function () {
     var msgDbConfig = dbConfig.epaperMsg;
 
     msgDbConfig.config = msgDbConfig.config || {}
-    msgDbConfig.config.logging = null
+    //msgDbConfig.config.logging = null
 
     var messageSequelize = new Sequelize(msgDbConfig.database, msgDbConfig.username, msgDbConfig.password, msgDbConfig.config);
     var models = {
@@ -27,11 +27,10 @@ var msgDbContents = function() {
     return Object.assign(messageSequelize, models);
 }
 
-var workDbContents = function() {
+var workDbContents = function () {
     var workDbConfig = dbConfig.epaperWork;
 
     workDbConfig.config = workDbConfig.config || {}
-        //workDbConfig.config.logging = null
 
     var workSequelize = new Sequelize(workDbConfig.database, workDbConfig.username, workDbConfig.password, workDbConfig.config);
 
@@ -57,13 +56,13 @@ function InitDbModels(models) {
     });
 }
 
-module.exports = function() {
-    return new Promise(function(resolve, reject) {
+module.exports = function () {
+    return new Promise(function (resolve, reject) {
         resolve(getDbContents());
     });
 }
 
-var getDbContents = module.exports.getDbContents = function() {
+var getDbContents = module.exports.getDbContents = function () {
     return {
         Sequelize: Sequelize,
         messageSequelize: msgDbContents(),

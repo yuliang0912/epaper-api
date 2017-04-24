@@ -13,7 +13,7 @@ module.exports = function (workSequelize) {
                 primaryKey: true,
                 autoIncrement: true
             },
-            batchId:{
+            batchId: {
                 type: Sequelize.INTEGER,
                 allowNull: false
             },
@@ -54,6 +54,10 @@ module.exports = function (workSequelize) {
             },
             checkedResource: {
                 type: Sequelize.STRING,
+            },
+            workScore: {
+                type: Sequelize.DECIMAL(6, 2),
+                defaultValue: 100
             },
         },
         {

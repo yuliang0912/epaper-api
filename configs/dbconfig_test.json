@@ -12,6 +12,12 @@
         "maxConnections": 2000,
         "minConnections": 3,
         "maxIdleTime": 10000
+      },
+      "dialectOptions": {
+        "charset": "utf8mb4",
+        "collate": "utf8mb4_unicode_ci",
+        "supportBigNumbers": true,
+        "bigNumberStrings": true
       }
     }
   },

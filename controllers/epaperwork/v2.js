@@ -4,7 +4,10 @@
 
 "use strict"
 
+var Promise = require('bluebird')
 var Sequelize = require('sequelize');
+
+module.exports.noAuths = ['getDoWorkInfo']
 
 module.exports.getPublishWorkRecordsForWeiXin = function *() {
     var page = this.checkQuery('page').toInt().gt(0).value;
@@ -96,7 +99,7 @@ module.exports.getWorkContenSubmitRecords = function *() {
     var sql = `SELECT eworkmembers.userId,eworkmembers.userName,doeworks.actualScore,doeworks.submitDate FROM eworkmembers 
              INNER JOIN doeworks ON  eworkmembers.userId = doeworks.userId AND eworkmembers.workId = doeworks.workId
              WHERE eworkmembers.workId = ${workId} AND doeworks.delStatus = 0 AND doeworks.resourceType = '${workContent.resourceType}' 
-             AND doeworks.versionId = ${workContent.versionId} AND doeworks.parentVersionId = ${workContent.parentVersionId} 
+             AND doeworks.versionId = '${workContent.versionId}' AND doeworks.parentVersionId = '${workContent.parentVersionId}' 
              ORDER BY doeworks.actualScore DESC,doeworks.submitDate ASC`;
 
     var submitList = yield this.dbContents.workSequelize.query(sql, {type: "SELECT"})
@@ -112,4 +115,68 @@ module.exports.getWorkContenSubmitRecords = function *() {
     });
 
     this.success(submitList)
+}
+
+module.exports.getDoWorkInfo = function *() {
+    var doWorkId = this.checkQuery('doWorkId').isNumeric().value;
+    this.errors && this.validateError();
+
+    var task1 = this.dbContents.workSequelize.doEworks.findById(doWorkId, {raw: true})
+    var task2 = this.dbContents.workSequelize.workAnswers.findById(doWorkId, {raw: true})
+
+    var doWorkInfo, workAnswer, checkedResource;
+
+    yield Promise.all([task1, task2]).spread(function (result1, result2) {
+        doWorkInfo = result1, workAnswer = result2;
+    })
+
+    if (!doWorkInfo) {
+        this.error("未找到作业", 101)
+    }
+    if (doWorkInfo.workId > 0) {
+        yield this.dbContents.workSequelize.workContents.findOne({
+            attributes: ["checkedResource"],
+            where: {
+                workId: doWorkInfo.workId,
+                moduleId: doWorkInfo.moduleId,
+                versionId: doWorkInfo.versionId,
+                parentVersionId: doWorkInfo.parentVersionId
+            },
+            raw: true
+        }).then(data=> {
+            checkedResource = data.checkedResource;
+        })
+    }
+
+    var result = {
+        doWorkId,
+        userId: doWorkInfo.userId,
+        userName: doWorkInfo.userName,
+        workName: doWorkInfo.resourceName,
+        workScore: doWorkInfo.workScore,
+        actualScore: doWorkInfo.actualScore,
+        workLong: doWorkInfo.workLong,
+        workStatus: doWorkInfo.workStatus,
+        moduleId: doWorkInfo.moduleId,
+        resourceType: doWorkInfo.resourceType,
+        versionId: doWorkInfo.versionId,
+        parentVersionId: doWorkInfo.parentVersionId,
+        submitDate: doWorkInfo.submitDate.valueOf() / 1000
+    }
+
+    if (workAnswer.correctContent) {
+        try {
+            workAnswer.correctContent = JSON.parse(workAnswer.correctContent);
+        } catch (e) {
+            workAnswer.correctContent = []
+        }
+    }
+    if (Array.isArray(workAnswer.correctContent) && workAnswer.correctContent.length > 0) {
+        result.workAnswers = workAnswer.correctContent
+    } else {
+        result.workAnswers = JSON.parse(workAnswer.submitContent)
+    }
+    result.checkedResource = checkedResource ? checkedResource.split(',') : [];
+
+    this.success(result)
 }
