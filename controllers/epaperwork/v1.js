@@ -712,12 +712,16 @@ module.exports = {
                         , 'cId', 'moduleId', 'versionId', 'resourceName', 'parentVersionId', 'resourceType'
                         , [Sequelize.literal('UNIX_TIMESTAMP(submitDate)'), 'submitDate']
                         , [Sequelize.literal('CONCAT(workId)'), 'workId']
-                        , 'contentId'
                         , 'workScore'
                         , 'actualScore'],
                         where: {
                             workId,
-                            contentId,
+                            packageId: currentContent.packageId,
+                            cId: currentContent.cId,
+                            moduleId: currentContent.moduleId,
+                            versionId: currentContent.versionId,
+                            parentVersionId: currentContent.parentVersionId,
+                            resourceType: currentContent.resourceType,
                             userId: {$in: receivers.map(r=>r.userId)},
                             delStatus: 0
                         }
