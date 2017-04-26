@@ -637,18 +637,17 @@ module.exports = {
             , 'versionId'
             , 'parentVersionId'
             , 'resourceType'
+            , 'workScore'
             , 'resourceName']
         });
         if(currentContent){
             let moduleId = parseInt(currentContent.moduleId); // 10 同步跟读 15 听说模考 124 线上作答 126 视频教程
-            currentContent.score = 100;
             switch (moduleId) {
                 case 10:
                     currentContent.moduleName = '同步跟读';
                     break;
                 case 15:
                     currentContent.moduleName = '听说模考';
-                    currentContent.score = 15;
                 case 124:
                     currentContent.moduleName = '线上作答';
                 case 126:
@@ -672,6 +671,7 @@ module.exports = {
                 classInfo.classId = work.classId;
                 classInfo.members = classMembers;
                 // 查询作业内容列表
+                // 过滤掉moduleId为123, 126的模块内容
                 contentList = yield this.dbContents.workSequelize
                 .workContents
                 .findAll({
@@ -680,7 +680,8 @@ module.exports = {
                         'resourceName'
                     ],
                     where: {
-                        workId
+                        workId,
+                        moduleId: {$notIn: [123, 126]}
                     }
                 });
                 work.contentList = contentList;
@@ -732,24 +733,13 @@ module.exports = {
                     // 过滤无效的记录, classMembers, records
                     // submitRecords = ls.filter(submitRecords, (u)=>{ return uids.indexOf(u.userId) > -1 });
                     if(submitRecords && submitRecords.length){
-                        submitRecords.forEach(r=>{
-                            let mid = parseInt(r.moduleId);
-                            switch (mid) {
-                                case 15: // 听说模考
-                                    r.workScore = 15;
-                                    break;
-                                default: // 其它
-                                    r.workScore = 100;
-                                    break;
-                            }
-                        });
                         // 统计(最高, 最低, 平均分, 优秀率, 及格率)
                         let max = ls.max(submitRecords, 'actualScore').actualScore;
                         let min = ls.min(submitRecords, 'actualScore').actualScore;
                         let scores = submitRecords.map(r=>r.actualScore);
                         let average = ls.sum(scores) / submitRecords.length;
-                        let passRate = ls.filter(submitRecords, (sr)=>sr.actualScore>=(currentContent.score*0.6)).length / submitRecords.length;
-                        let excellentRate = ls.filter(submitRecords, (sr)=>sr.actualScore>=(currentContent.score*0.8)).length / submitRecords.length;
+                        let passRate = ls.filter(submitRecords, (sr)=>sr.actualScore>=(currentContent.workScore*0.6)).length / submitRecords.length;
+                        let excellentRate = ls.filter(submitRecords, (sr)=>sr.actualScore>=(currentContent.workScore*0.8)).length / submitRecords.length;
                         statistics = {max, min, average, passRate, excellentRate};
                         let sortRes = ls.sortByOrder(submitRecords, ['actualScore'], ['desc']);
                         let records = [];
@@ -789,6 +779,7 @@ module.exports = {
         let classInfo = {};
         let header = ['排名', '姓名'];
         let statistics;
+        let workTotalScore; // 所有作业内容的总分
         work = yield this.dbContents.workSequelize
         .eworks
         .findById(workId, {
@@ -806,6 +797,7 @@ module.exports = {
             classInfo.classId = classId;
             classInfo.members = classMembers;
             // 查询作业内容列表
+            // 过滤掉moduleId为123, 126的模块内容
             contentList = yield this.dbContents.workSequelize
             .workContents
             .findAll({
@@ -813,12 +805,14 @@ module.exports = {
                     'contentId',
                     [Sequelize.literal('CONCAT(workId)'), 'workId'],
                     [Sequelize.literal('CONCAT(packageId)'), 'packageId']
-                    , 'cId', 'moduleId', 'versionId', 'resourceName', 'parentVersionId', 'resourceType', 'resourceName'
+                    , 'cId', 'moduleId', 'versionId', 'resourceName', 'parentVersionId', 'workScore', 'resourceType', 'resourceName'
                 ],
                 where: {
-                    workId
+                    workId,
+                    moduleId: {$notIn:[123, 126]}
                 }
             });
+            workTotalScore = ls.sum(contentList, 'workScore');
             contentList = ls.sortBy(contentList, 'contentId');
             // 构建header
             let cl = contentList.map(c=>{return { id: c.contentId, name: c.resourceName}});
@@ -843,6 +837,7 @@ module.exports = {
             });
             if(receivers && receivers.length > 0){
                 // 查询作业内容提交记录列表
+                // 过滤掉moduleId为123, 126的模块内容
                 submitRecords = yield this.dbContents.workSequelize
                 .doEworks
                 .findAll({
@@ -857,7 +852,8 @@ module.exports = {
                     where: {
                         workId,
                         userId: {$in: receivers.map(r=>r.userId)},
-                        delStatus: 0
+                        delStatus: 0,
+                        moduleId: {$notIn: [123, 126]}
                     }
                 });
                 // 过滤无效的班级成员, classMembers, unreceivers, receivers, 
@@ -867,17 +863,6 @@ module.exports = {
                 // 过滤无效的记录, classMembers, records
                 // submitRecords = ls.filter(submitRecords, (u)=>{ return uids.indexOf(u.userId) > -1 });
                 if(submitRecords && submitRecords.length){
-                    submitRecords.forEach(r=>{
-                        let mid = parseInt(r.moduleId);
-                        switch (mid) {
-                            case 15: // 听说模考
-                                r.workScore = 15;
-                                break;
-                            default: // 其它
-                                r.workScore = 100;
-                                break;
-                        }
-                    });
                     // 以用户分组统计
                     let groups = ls.groupBy(submitRecords, 'userId');
                     let scoreOfMembers = [];
@@ -908,7 +893,9 @@ module.exports = {
                     let min = ls.min(scoreOfMembers, 'totalScore').totalScore;
                     let scores = scoreOfMembers.map(r=>r.totalScore);
                     let average = ls.sum(scores) / scoreOfMembers.length;
-                    statistics = {max, min, average};
+                    let passRate = ls.filter(scoreOfMembers, (r)=>r.totalScore>=(workTotalScore*0.6)).length / scoreOfMembers.length;
+                    let excellentRate = ls.filter(scoreOfMembers, (r)=>r.totalScore>=(workTotalScore*0.8)).length / scoreOfMembers.length;
+                    statistics = {max, min, average, passRate, excellentRate};
                     let sortRes = ls.sortByOrder(scoreOfMembers, ['totalScore'], ['desc']);
                     sortRes.forEach(r=>{
                         r.index = sortRes.indexOf(r) + 1;
