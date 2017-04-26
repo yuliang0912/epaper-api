@@ -144,7 +144,7 @@ module.exports.getDoWorkInfo = function *() {
             },
             raw: true
         }).then(data=> {
-            checkedResource = data.checkedResource;
+            checkedResource = data ? data.checkedResource : null;
         })
     }
 
@@ -161,7 +161,8 @@ module.exports.getDoWorkInfo = function *() {
         resourceType: doWorkInfo.resourceType,
         versionId: doWorkInfo.versionId,
         parentVersionId: doWorkInfo.parentVersionId,
-        submitDate: doWorkInfo.submitDate.valueOf() / 1000
+        submitDate: doWorkInfo.submitDate.valueOf() / 1000,
+        comment: doWorkInfo.comment
     }
 
     if (workAnswer.correctContent) {

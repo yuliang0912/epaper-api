@@ -300,17 +300,24 @@ module.exports = {
     },
     //设置消息为已读状态
     setReadByMsgType: function *() {
-        var msgType = this.checkQuery('msgType').toInt().value;
+        var senderId = this.checkQuery('senderId').toInt().value;
         var brandId = this.checkQuery('brandId').toInt().value;
         this.errors && this.validateError();
 
-        yield this.dbContents.messageSequelize.msgReceiver.update({msgStatus: 1}, {
-            where: {
-                receiverId: this.request.userId,
-                brandId, msgType
-            }
+        var sql = `UPDATE msgreceiver
+                  INNER JOIN msgmain ON msgreceiver.msgId = msgmain.msgId
+                  SET msgreceiver.msgStatus = 1 
+                  WHERE msgmain.brandId = :brandId AND msgmain.senderId = :senderId AND msgreceiver.receiverId = :receiverId`;
+
+        yield this.dbContents.messageSequelize.query(sql, {
+            replacements: {
+                brandId, senderId,
+                receiverId: this.request.userId
+            },
+            type: "BULKUPDATE",
+            raw: true
         }).then(data=> {
-            this.success(data[0] > 0);
+            this.success(data > 0)
         })
     },
     delete: function *() {
