@@ -145,23 +145,33 @@ module.exports = {
         let serviceId = this.checkQuery('serviceId').value;
         let userId = this.request.userId;
         this.errors && this.validateError();
-        let sql = `SELECT 
-                   eworks.publishUserId as userId
-                   , eworks.brandId as brandId
-                   , eworks.workType as serviceId
-                   , eworkcontents.packageId as packageId
-                   , UNIX_TIMESTAMP(eworks.publishDate) as publishDate
-                   FROM eworks 
-                   INNER JOIN eworkcontents ON eworks.workId = eworkcontents.workId
-                   WHERE 
-                   eworks.publishUserId = ${userId}
-                   AND eworks.brandId = ${brandId}
-                   AND eworks.status = 0
-                   @serviceId
-                   GROUP BY
+        let sql = `SELECT
+                    eworks1.publishUserId AS userId,
+                    eworks1.brandId AS brandId,
+                    eworks1.workType AS serviceId,
+                    eworkcontents.packageId AS packageId,
+                    UNIX_TIMESTAMP(eworks1.publishDate) AS publishDate
+                    FROM
+                        (select 
+                    workId
+                    , workName
+                    , publishUserId
+                    , brandId
+                    , workType
+                    , publishDate
+                    , status 
+                    from eworks 
+                    where publishUserId = ${userId} 
+                    and brandId = ${brandId} 
+                    and status = 0 
+                    @serviceId order by eworks.publishDate desc) 
+                        eworks1 
+                    INNER JOIN eworkcontents ON eworks1.workId = eworkcontents.workId
+                    GROUP BY
                     eworkcontents.packageId
-                   ORDER BY eworks.publishDate DESC
-                   LIMIT ${recordNum};`;
+                    ORDER BY
+                        eworks1.publishDate DESC
+                    LIMIT ${recordNum};`;
         if(serviceId) sql = sql.replace('@serviceId', `AND eworks.workType = ${serviceId}`);
         else sql = sql.replace('@serviceId', '');
 
