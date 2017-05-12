@@ -910,11 +910,36 @@ module.exports = {
 
         }
         this.error('无有效记录');
+    },
+    /**
+     * 统计班级的作业布置记录次数
+     * 
+     */
+    getEworkRecordsStatistics: function *(){
+        let userId = this.request.userId;
+        let brandId = this.checkQuery('brandId').notEmpty().value;
+        let classIds = this.checkQuery('classIds').notEmpty().value;
+        this.errors && this.validateError();
+
+        let works = yield this.dbContents.workSequelize
+        .eworks
+        .findAll({
+            attributes: [
+                [Sequelize.literal('CONCAT(workId)'), 'workId']
+                , 'publishUserId'
+                , 'publishUserName'
+                , 'brandId'
+                , [Sequelize.literal('COUNT(workId)'), 'workCount']
+                , [Sequelize.literal('CONCAT(classId)'), 'classId']
+            ],
+            where: {
+                publishUserId: userId,
+                brandId,
+                classId: {$in: classIds.split(',')},
+                status: 0
+            },
+            group: 'classId'
+        });
+        this.success(works);
     }
 }
-
-
-
-
-
-
