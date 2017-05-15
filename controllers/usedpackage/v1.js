@@ -150,7 +150,8 @@ module.exports = {
                     eworks1.brandId AS brandId,
                     eworks1.workType AS serviceId,
                     eworkcontents.packageId AS packageId,
-                    UNIX_TIMESTAMP(eworks1.publishDate) AS publishDate
+                    UNIX_TIMESTAMP(eworks1.publishDate) AS updateAt,
+                    UNIX_TIMESTAMP(eworks1.publishDate) AS createAt
                     FROM
                         (select 
                     workId
