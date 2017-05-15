@@ -14,7 +14,7 @@ var msgDbContents = function () {
     var msgDbConfig = dbConfig.epaperMsg;
 
     msgDbConfig.config = msgDbConfig.config || {}
-    //msgDbConfig.config.logging = null
+    msgDbConfig.config.logging = null
 
     var messageSequelize = new Sequelize(msgDbConfig.database, msgDbConfig.username, msgDbConfig.password, msgDbConfig.config);
     var models = {
@@ -31,6 +31,7 @@ var workDbContents = function () {
     var workDbConfig = dbConfig.epaperWork;
 
     workDbConfig.config = workDbConfig.config || {}
+    workDbConfig.config.logging = null
 
     var workSequelize = new Sequelize(workDbConfig.database, workDbConfig.username, workDbConfig.password, workDbConfig.config);
 
@@ -41,6 +42,7 @@ var workDbContents = function () {
         workMembers: require('../models/epaperwork/workmembers')(workSequelize),
         workContents: require('../models/epaperwork/workcontents')(workSequelize),
         workAnswers: require('../models/epaperwork/workanswers')(workSequelize),
+        workAnswerDetails: require('../models/epaperwork/workanswerdetails')(workSequelize),
         learningrecords: require('../models/epaperwork/learningrecords')(workSequelize),
         usedpkgrecords: require('../models/epaperwork/usedpkgrecords')(workSequelize),
     }

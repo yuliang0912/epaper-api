@@ -12,13 +12,6 @@
         "description": "布置作业事件"
       },
       {
-        "name": "delPublishWork",
-        "eventHandler": [
-          "deleteWorkHandler"
-        ],
-        "description": "老师删除已经布置的作业事件"
-      },
-      {
         "name": "commentWork",
         "eventHandler": [
           "commentWorkHandler"
@@ -45,13 +38,6 @@
           "corrrectWorkHandler"
         ],
         "description": "批改作业事件"
-      },
-      {
-        "name": "checkWork",
-        "eventHandler": [
-          "checkWorkHandler"
-        ],
-        "description": "检查作业事件"
       },
       {
         "name": "testEvent",

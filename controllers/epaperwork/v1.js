@@ -49,7 +49,8 @@ module.exports = {
         if (batchList.count > 0) {
             var batchIds = batchList.rows.map(m=>m.batchId);
             var eworkFunc = this.dbContents.workSequelize.eworks.findAll({
-                attributes: ['batchId', [Sequelize.literal('CONCAT(workId)'), 'workId'], ['tags', 'reviceObject'], 'classId'],
+                raw: true,
+                attributes: ['batchId', [Sequelize.literal('CONCAT(workId)'), 'workId'], ['tags', 'reviceObject'], 'classId', 'workMessage'],
                 where: {batchId: {$in: batchIds}, status: 0}
             });
             var eworkContentFunc = this.dbContents.workSequelize.workContents.findAll({
@@ -61,7 +62,7 @@ module.exports = {
         }
 
         var result = batchList.rows.map(item=> {
-            return {
+            var model = {
                 batchId: item.batchId,
                 brandId: item.brandId,
                 serviceType: item.workType,
@@ -78,6 +79,12 @@ module.exports = {
                     return content.batchId == item.batchId;
                 })
             };
+            model.workMessage = model.workList.length > 0 ? model.workList[0].workMessage : ""
+            model.workList.forEach(item=> {
+                delete item.batchId
+                delete item.workMessage
+            })
+            return model
         });
 
         this.success({
@@ -608,7 +615,7 @@ module.exports = {
      * 获取一个作业内容的统计成绩
      * @contentId
      */
-    getEworkContentScoreStatistics: function *(){
+    getEworkContentScoreStatistics: function *() {
         // 1.查询单个作业内容(by contentId)
         // 2.查询本次作业信息(by workId), 包括内容列表信息
         // 3.查询班级成员列表(by classId)
@@ -627,20 +634,20 @@ module.exports = {
         let currentContent = yield this.dbContents.workSequelize.workContents.findById(contentId, {
             raw: true,
             attributes: ['contentId'
-            , 'batchId'
-            , [Sequelize.literal('CONCAT(workId)')
-            , 'workId']
-            , [Sequelize.literal('CONCAT(packageId)')
-            , 'packageId']
-            , 'cId'
-            , 'moduleId'
-            , 'versionId'
-            , 'parentVersionId'
-            , 'resourceType'
-            , 'workScore'
-            , 'resourceName']
+                , 'batchId'
+                , [Sequelize.literal('CONCAT(workId)')
+                    , 'workId']
+                , [Sequelize.literal('CONCAT(packageId)')
+                    , 'packageId']
+                , 'cId'
+                , 'moduleId'
+                , 'versionId'
+                , 'parentVersionId'
+                , 'resourceType'
+                , 'workScore'
+                , 'resourceName']
         });
-        if(currentContent){
+        if (currentContent) {
             let moduleId = parseInt(currentContent.moduleId); // 10 同步跟读 15 听说模考 124 线上作答 126 视频教程
             switch (moduleId) {
                 case 10:
@@ -657,102 +664,110 @@ module.exports = {
             }
             let workId = currentContent.workId;
             work = yield this.dbContents.workSequelize
-            .eworks
-            .findById(workId, {
-                raw: true,
-                attributes: [
-                    [Sequelize.literal('CONCAT(workId)'), 'workId'], 
-                    'workName', 
-                    [Sequelize.literal('CONCAT(classId)'), 'classId']],
-                where: {status: 0}
-            });
-            if(work){
+                .eworks
+                .findById(workId, {
+                    raw: true,
+                    attributes: [
+                        [Sequelize.literal('CONCAT(workId)'), 'workId'],
+                        'workName',
+                        [Sequelize.literal('CONCAT(classId)'), 'classId']],
+                    where: {status: 0}
+                });
+            if (work) {
                 classMembers = yield work_helper.getClassMembers(work.classId, userId, 1);
                 classInfo.classId = work.classId;
                 classInfo.members = classMembers;
                 // 查询作业内容列表
                 // 过滤掉moduleId为123, 126的模块内容
                 contentList = yield this.dbContents.workSequelize
-                .workContents
-                .findAll({
-                    attributes: [
-                        'contentId',
-                        'resourceName'
-                    ],
-                    where: {
-                        workId,
-                        moduleId: {$notIn: [123, 126]}
-                    }
-                });
+                    .workContents
+                    .findAll({
+                        attributes: [
+                            'contentId',
+                            'resourceName'
+                        ],
+                        where: {
+                            workId,
+                            moduleId: {$notIn: [123, 126]}
+                        }
+                    });
                 work.contentList = contentList;
                 // 查询作业接收者列表
                 receivers = yield this.dbContents.workSequelize
-                .workMembers
-                .findAll({
-                    attributes: [[Sequelize.literal('CONCAT(workId)'), 'workId'], 'userId', 'userName', 'status', 'isRead'],
-                    where: {
-                        workId
-                    }
-                });
+                    .workMembers
+                    .findAll({
+                        attributes: [[Sequelize.literal('CONCAT(workId)'), 'workId'], 'userId', 'userName', 'status', 'isRead'],
+                        where: {
+                            workId
+                        }
+                    });
                 // 筛选
-                classMembers.forEach(cm=>{
-                    let t = receivers.find(r=>r.userId==cm.userId);
-                    if(!t){
+                classMembers.forEach(cm=> {
+                    let t = receivers.find(r=>r.userId == cm.userId);
+                    if (!t) {
                         unreceivers.push(cm);
                     }
                 });
-                if(receivers && receivers.length > 0){
+                if (receivers && receivers.length > 0) {
                     // 查询作业内容提交记录列表
                     submitRecords = yield this.dbContents.workSequelize
-                    .doEworks
-                    .findAll({
-                        attributes: [[Sequelize.literal('CONCAT(doWorkId)'), 'doWorkId']
-                        , 'userId', 'userName'
-                        , [Sequelize.literal('CONCAT(packageId)'), 'packageId']
-                        , 'cId', 'moduleId', 'versionId', 'resourceName', 'parentVersionId', 'resourceType'
-                        , [Sequelize.literal('UNIX_TIMESTAMP(submitDate)'), 'submitDate']
-                        , [Sequelize.literal('CONCAT(workId)'), 'workId']
-                        , 'workScore'
-                        , 'actualScore'],
-                        where: {
-                            workId,
-                            packageId: currentContent.packageId,
-                            cId: currentContent.cId,
-                            moduleId: currentContent.moduleId,
-                            versionId: currentContent.versionId,
-                            parentVersionId: currentContent.parentVersionId,
-                            resourceType: currentContent.resourceType,
-                            userId: {$in: receivers.map(r=>r.userId)},
-                            delStatus: 0
-                        }
-                    });
+                        .doEworks
+                        .findAll({
+                            attributes: [[Sequelize.literal('CONCAT(doWorkId)'), 'doWorkId']
+                                , 'userId', 'userName'
+                                , [Sequelize.literal('CONCAT(packageId)'), 'packageId']
+                                , 'cId', 'moduleId', 'versionId', 'resourceName', 'parentVersionId', 'resourceType'
+                                , [Sequelize.literal('UNIX_TIMESTAMP(submitDate)'), 'submitDate']
+                                , [Sequelize.literal('CONCAT(workId)'), 'workId']
+                                , 'workScore'
+                                , 'actualScore'],
+                            where: {
+                                workId,
+                                packageId: currentContent.packageId,
+                                cId: currentContent.cId,
+                                moduleId: currentContent.moduleId,
+                                versionId: currentContent.versionId,
+                                parentVersionId: currentContent.parentVersionId,
+                                resourceType: currentContent.resourceType,
+                                userId: {$in: receivers.map(r=>r.userId)},
+                                delStatus: 0
+                            }
+                        });
                     // 过滤无效的班级成员, classMembers, unreceivers, receivers, 
                     // let uids = classMembers.map(m=>m.userId);
                     // unreceivers = ls.filter(unreceivers, (u)=>{ return uids.indexOf(u.userId) > -1 });
                     // receivers = ls.filter(receivers, (u)=>{ return uids.indexOf(u.userId) > -1 });
                     // 过滤无效的记录, classMembers, records
                     // submitRecords = ls.filter(submitRecords, (u)=>{ return uids.indexOf(u.userId) > -1 });
-                    if(submitRecords && submitRecords.length){
+                    if (submitRecords && submitRecords.length) {
                         // 统计(最高, 最低, 平均分, 优秀率, 及格率)
                         let max = ls.max(submitRecords, 'actualScore').actualScore;
                         let min = ls.min(submitRecords, 'actualScore').actualScore;
                         let scores = submitRecords.map(r=>r.actualScore);
                         let average = ls.sum(scores) / submitRecords.length;
-                        let passRate = ls.filter(submitRecords, (sr)=>sr.actualScore>=(currentContent.workScore*0.6)).length / submitRecords.length;
-                        let excellentRate = ls.filter(submitRecords, (sr)=>sr.actualScore>=(currentContent.workScore*0.8)).length / submitRecords.length;
+                        let passRate = ls.filter(submitRecords, (sr)=>sr.actualScore >= (currentContent.workScore * 0.6)).length / submitRecords.length;
+                        let excellentRate = ls.filter(submitRecords, (sr)=>sr.actualScore >= (currentContent.workScore * 0.8)).length / submitRecords.length;
                         statistics = {max, min, average, passRate, excellentRate};
                         let sortRes = ls.sortByOrder(submitRecords, ['actualScore'], ['desc']);
                         let records = [];
-                        sortRes.forEach(r=>{
+                        sortRes.forEach(r=> {
                             let currentIndex = sortRes.indexOf(r) + 1;
                             r = r.dataValues;
                             records.push(Object.assign({index: currentIndex}, r));
                         });
-                        this.success({ work, currentContent, unreceivers, receivers, classInfo, statistics, records: records });
+                        this.success({
+                            work,
+                            currentContent,
+                            unreceivers,
+                            receivers,
+                            classInfo,
+                            statistics,
+                            records: records
+                        });
                         return;
                     }
                     // 没有成绩记录
-                    this.success({ work, currentContent, unreceivers, receivers, classInfo });
+                    this.success({work, currentContent, unreceivers, receivers, classInfo});
                     return;
                 }
 
@@ -764,7 +779,7 @@ module.exports = {
      * 获取一次作业的统计成绩
      * @workId
      */
-    getEworkScoreStatistics: function *(){
+    getEworkScoreStatistics: function *() {
         // 1.查询本次作业信息(by workId), 包括内容列表信息
         let workId = this.checkQuery('workId').notEmpty().toInt().value;
         let userId = this.request.userId;
@@ -781,16 +796,16 @@ module.exports = {
         let statistics;
         let workTotalScore; // 所有作业内容的总分
         work = yield this.dbContents.workSequelize
-        .eworks
-        .findById(workId, {
-            raw: true,
-            attributes: [
-                [Sequelize.literal('CONCAT(workId)'), 'workId'], 
-                'workName', 
-                [Sequelize.literal('CONCAT(classId)'), 'classId']],
-            where: {status: 0}
-        });
-        if(work){
+            .eworks
+            .findById(workId, {
+                raw: true,
+                attributes: [
+                    [Sequelize.literal('CONCAT(workId)'), 'workId'],
+                    'workName',
+                    [Sequelize.literal('CONCAT(classId)'), 'classId']],
+                where: {status: 0}
+            });
+        if (work) {
             // 查询班级成员列表, 确定未被布置作业的学生
             let classId = work.classId;
             classMembers = yield work_helper.getClassMembers(classId, userId, 1);
@@ -799,70 +814,72 @@ module.exports = {
             // 查询作业内容列表
             // 过滤掉moduleId为123, 126的模块内容
             contentList = yield this.dbContents.workSequelize
-            .workContents
-            .findAll({
-                attributes: [
-                    'contentId',
-                    [Sequelize.literal('CONCAT(workId)'), 'workId'],
-                    [Sequelize.literal('CONCAT(packageId)'), 'packageId']
-                    , 'cId', 'moduleId', 'versionId', 'resourceName', 'parentVersionId', 'workScore', 'resourceType', 'resourceName'
-                ],
-                where: {
-                    workId,
-                    moduleId: {$notIn:[123, 126]}
-                }
-            });
+                .workContents
+                .findAll({
+                    attributes: [
+                        'contentId',
+                        [Sequelize.literal('CONCAT(workId)'), 'workId'],
+                        [Sequelize.literal('CONCAT(packageId)'), 'packageId']
+                        , 'cId', 'moduleId', 'versionId', 'resourceName', 'parentVersionId', 'workScore', 'resourceType', 'resourceName'
+                    ],
+                    where: {
+                        workId,
+                        moduleId: {$notIn: [123, 126]}
+                    }
+                });
             workTotalScore = ls.sum(contentList, 'workScore');
             contentList = ls.sortBy(contentList, 'contentId');
             // 构建header
-            let cl = contentList.map(c=>{return { id: c.contentId, name: c.resourceName}});
+            let cl = contentList.map(c=> {
+                return {id: c.contentId, name: c.resourceName}
+            });
             header.push(cl);
             header.push('总分');
             work.contentList = contentList;
             // 查询作业接收者列表
             receivers = yield this.dbContents.workSequelize
-            .workMembers
-            .findAll({
-                attributes: [[Sequelize.literal('CONCAT(workId)'), 'workId'], 'userId', 'userName', 'status', 'isRead'],
-                where: {
-                    workId
-                }
-            });
+                .workMembers
+                .findAll({
+                    attributes: [[Sequelize.literal('CONCAT(workId)'), 'workId'], 'userId', 'userName', 'status', 'isRead'],
+                    where: {
+                        workId
+                    }
+                });
             // 筛选未被布置者
-            classMembers.forEach(cm=>{
-                let t = receivers.find(r=>r.userId==cm.userId);
-                if(!t){
+            classMembers.forEach(cm=> {
+                let t = receivers.find(r=>r.userId == cm.userId);
+                if (!t) {
                     unreceivers.push(cm);
                 }
             });
-            if(receivers && receivers.length > 0){
+            if (receivers && receivers.length > 0) {
                 // 查询作业内容提交记录列表
                 // 过滤掉moduleId为123, 126的模块内容
                 submitRecords = yield this.dbContents.workSequelize
-                .doEworks
-                .findAll({
-                    attributes: [[Sequelize.literal('CONCAT(doWorkId)'), 'doWorkId']
-                    , 'userId', 'userName'
-                    , [Sequelize.literal('CONCAT(packageId)'), 'packageId']
-                    , 'cId', 'moduleId', 'versionId', 'resourceName', 'parentVersionId', 'resourceType'
-                    , [Sequelize.literal('UNIX_TIMESTAMP(submitDate)'), 'submitDate']
-                    , [Sequelize.literal('CONCAT(workId)'), 'workId']
-                    , 'workScore'
-                    , 'actualScore'],
-                    where: {
-                        workId,
-                        userId: {$in: receivers.map(r=>r.userId)},
-                        delStatus: 0,
-                        moduleId: {$notIn: [123, 126]}
-                    }
-                });
+                    .doEworks
+                    .findAll({
+                        attributes: [[Sequelize.literal('CONCAT(doWorkId)'), 'doWorkId']
+                            , 'userId', 'userName'
+                            , [Sequelize.literal('CONCAT(packageId)'), 'packageId']
+                            , 'cId', 'moduleId', 'versionId', 'resourceName', 'parentVersionId', 'resourceType'
+                            , [Sequelize.literal('UNIX_TIMESTAMP(submitDate)'), 'submitDate']
+                            , [Sequelize.literal('CONCAT(workId)'), 'workId']
+                            , 'workScore'
+                            , 'actualScore'],
+                        where: {
+                            workId,
+                            userId: {$in: receivers.map(r=>r.userId)},
+                            delStatus: 0,
+                            moduleId: {$notIn: [123, 126]}
+                        }
+                    });
                 // 过滤无效的班级成员, classMembers, unreceivers, receivers, 
                 // let uids = classMembers.map(m=>m.userId);
                 // unreceivers = ls.filter(unreceivers, (u)=>{ return uids.indexOf(u.userId) > -1 });
                 // receivers = ls.filter(receivers, (u)=>{ return uids.indexOf(u.userId) > -1 });
                 // 过滤无效的记录, classMembers, records
                 // submitRecords = ls.filter(submitRecords, (u)=>{ return uids.indexOf(u.userId) > -1 });
-                if(submitRecords && submitRecords.length){
+                if (submitRecords && submitRecords.length) {
                     // 以用户分组统计
                     let groups = ls.groupBy(submitRecords, 'userId');
                     let scoreOfMembers = [];
@@ -876,10 +893,10 @@ module.exports = {
                             scoreOfMember.userId = member.userId;
                             scoreOfMember.userName = member.userName;
                             scoreOfMember.tabDatas = [];
-                            contentList.forEach(c=>{
-                                let temp = { id: c.contentId, name: c.resourceName, score: 0};
-                                let r = ls.find(element, (e)=>e.packageId==c.packageId&&e.cId==c.cId&&e.versionId==c.versionId&&e.parentVersionId==c.parentVersionId&&e.resourceType==c.resourceType);
-                                if(r){
+                            contentList.forEach(c=> {
+                                let temp = {id: c.contentId, name: c.resourceName, score: 0};
+                                let r = ls.find(element, (e)=>e.packageId == c.packageId && e.cId == c.cId && e.versionId == c.versionId && e.parentVersionId == c.parentVersionId && e.resourceType == c.resourceType);
+                                if (r) {
                                     temp.score = r.actualScore;
                                 }
                                 scoreOfMember.tabDatas.push(temp);
@@ -893,18 +910,18 @@ module.exports = {
                     let min = ls.min(scoreOfMembers, 'totalScore').totalScore;
                     let scores = scoreOfMembers.map(r=>r.totalScore);
                     let average = ls.sum(scores) / scoreOfMembers.length;
-                    let passRate = ls.filter(scoreOfMembers, (r)=>r.totalScore>=(workTotalScore*0.6)).length / scoreOfMembers.length;
-                    let excellentRate = ls.filter(scoreOfMembers, (r)=>r.totalScore>=(workTotalScore*0.8)).length / scoreOfMembers.length;
+                    let passRate = ls.filter(scoreOfMembers, (r)=>r.totalScore >= (workTotalScore * 0.6)).length / scoreOfMembers.length;
+                    let excellentRate = ls.filter(scoreOfMembers, (r)=>r.totalScore >= (workTotalScore * 0.8)).length / scoreOfMembers.length;
                     statistics = {max, min, average, passRate, excellentRate};
                     let sortRes = ls.sortByOrder(scoreOfMembers, ['totalScore'], ['desc']);
-                    sortRes.forEach(r=>{
+                    sortRes.forEach(r=> {
                         r.index = sortRes.indexOf(r) + 1;
                     });
-                    this.success({ work, header, unreceivers, receivers, classInfo, records: sortRes, statistics });
+                    this.success({work, header, unreceivers, receivers, classInfo, records: sortRes, statistics});
                     return;
                 }
                 // 没有成绩记录
-                this.success({ work, header, unreceivers, receivers, classInfo });
+                this.success({work, header, unreceivers, receivers, classInfo});
                 return;
             }
 

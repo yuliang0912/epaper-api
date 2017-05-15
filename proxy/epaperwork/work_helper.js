@@ -47,7 +47,19 @@ function submitOnlinePaperWork(doWork, workAnswers) {
                     doWorkId: doWork.doWorkId,
                     submitContent: workAnswers
                 }, {transaction: trans})
-                return Promise.all([doEworkFunc, workAnswerFunc])
+                var workDetails = workAnswers.map(item=> {
+                    return {
+                        doWorkId: doWork.doWorkId,
+                        workId: doWork.workId,
+                        contentId: doWork.contentId,
+                        versionId: item.versionId,
+                        assess: item.assess,
+                        score: item.score,
+                        answerContent: item.answers
+                    }
+                })
+                var workDetailFunc = workSequelize.workAnswerDetails.bulkCreate(workDetails, {transaction: trans})
+                return Promise.all([doEworkFunc, workAnswerFunc, workDetailFunc])
             })
         }).then(data=> {
             resolve(doWork.doWorkId)
@@ -61,6 +73,7 @@ function submitOnlinePaperWork(doWork, workAnswers) {
     });
 }
 
+//外网已经不存在视频讲解题目了.
 //提交视频讲解作业或者自主练习(视频讲解作业与自主练习都接受最后一次)
 function submitVideoExplainWork(doWork, workAnswers) {
     return new Promise(function (resolve, reject) {
@@ -138,7 +151,7 @@ module.exports.getProductInfo = function (productIds) {
 }
 
 //根据classId获取班级成员列表
-module.exports.getClassMembers = function(classId, userId, role) {
+module.exports.getClassMembers = function (classId, userId, role) {
     let request = require('request');
     let url = 'http://100.114.31.171:19014/relation/class/get_members';
     return new Promise(function (resolve, reject) {
