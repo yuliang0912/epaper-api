@@ -3,6 +3,7 @@
  */
 "use strict"
 
+var apiUtils = require('../../lib/api_utils')
 var msgHelper = require('./rabbit_helper');
 var msgSequelize = require('../../configs/database').getDbContents().messageSequelize;
 
@@ -11,6 +12,10 @@ module.exports.sendMsg = function (messageModel, messageContent, receiverIdList)
         if (!messageModel || !messageContent || receiverIdList.length < 1) {
             return resolve();
         }
+        //去除重复的发送名单
+        receiverIdList = receiverIdList.groupBy('receiverId').map(item=> {
+            return {receiverId: item.key, receiverName: item.value[0].receiverName}
+        })
         msgSequelize.transaction(function (trans) {
             let msgId = 0;
             return msgSequelize.msgMain.create(messageModel, {
@@ -19,6 +24,7 @@ module.exports.sendMsg = function (messageModel, messageContent, receiverIdList)
                 messageContent.msgId = msgId = msg.msgId
                 messageContent.msgType = msg.msgType
                 receiverIdList.forEach(m=>m.msgId = msgId)
+
                 var contentFunc = msgSequelize.msgContent.create(messageContent, {transaction: trans})
                 var receiverFunc = msgSequelize.msgReceiver.bulkCreate(receiverIdList, {transaction: trans})
                 return Promise.all([contentFunc, receiverFunc])

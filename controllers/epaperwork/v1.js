@@ -386,7 +386,7 @@ module.exports = {
         }
         var doWorkInfo = yield this.dbContents.workSequelize.doEworks.findById(doWorkId, {
             raw: true,
-            attributes: ['moduleId']
+            attributes: ['moduleId', [Sequelize.literal('CONCAT(workId)'), 'workId'], 'contentId']
         })
         if (!doWorkInfo || doWorkInfo.moduleId != 124) {
             this.error('未找到作业或当前接口不支持此作业类型', 101);
@@ -407,8 +407,25 @@ module.exports = {
                 correctDate: Date.now()
             }, {where: {doWorkId}, transaction: trans})
 
-            return Promise.all([updateDoeworksFunc, updateAnswerFunc])
-        }).then(t=> {
+            var updateAnswerDetailFunc = this.dbContents.workSequelize.workAnswerDetails.destroy({
+                where: {doWorkId},
+                transaction: trans
+            }).then(()=> {
+                var workDetails = correctContents.map(item=> {
+                    return {
+                        doWorkId: doWorkId,
+                        workId: doWorkInfo.workId,
+                        contentId: doWorkInfo.contentId,
+                        versionId: item.versionId,
+                        assess: item.assess,
+                        score: item.score,
+                        answerContent: item.answers
+                    }
+                })
+                return this.dbContents.workSequelize.workAnswerDetails.bulkCreate(workDetails, {transaction: trans})
+            })
+            return Promise.all([updateDoeworksFunc, updateAnswerFunc, updateAnswerDetailFunc])
+        }).then(()=> {
             this.success(1)
             eventFactory.workEvent && eventFactory.workEvent.emit('corrrectWork', doWorkId)
         }).catch(this.error)
@@ -561,7 +578,6 @@ module.exports = {
                    INNER JOIN eworkcontents ON eworks.workId = eworkcontents.workId
                    WHERE eworkmembers.userId = ${this.request.userId}
                    AND eworks.publishDate > CURRENT_DATE()`
-
         yield this.dbContents.workSequelize.query(sql, {
             raw: true,
             type: 'SELECT'

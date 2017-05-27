@@ -124,7 +124,7 @@ module.exports.getDoWorkInfo = function *() {
     var task1 = this.dbContents.workSequelize.doEworks.findById(doWorkId, {raw: true})
     var task2 = this.dbContents.workSequelize.workAnswers.findById(doWorkId, {raw: true})
 
-    var doWorkInfo, workAnswer, checkedResource;
+    var doWorkInfo, workAnswer, checkedResource = null, requirementContent = null;
 
     yield Promise.all([task1, task2]).spread(function (result1, result2) {
         doWorkInfo = result1, workAnswer = result2;
@@ -135,7 +135,7 @@ module.exports.getDoWorkInfo = function *() {
     }
     if (doWorkInfo.workId > 0) {
         yield this.dbContents.workSequelize.workContents.findOne({
-            attributes: ["checkedResource"],
+            attributes: ["checkedResource", "requirementContent"],
             where: {
                 workId: doWorkInfo.workId,
                 moduleId: doWorkInfo.moduleId,
@@ -144,7 +144,10 @@ module.exports.getDoWorkInfo = function *() {
             },
             raw: true
         }).then(data=> {
-            checkedResource = data ? data.checkedResource : null;
+            if (data) {
+                checkedResource = data.checkedResource;
+                requirementContent = data.requirementContent;
+            }
         })
     }
 
@@ -162,6 +165,7 @@ module.exports.getDoWorkInfo = function *() {
         versionId: doWorkInfo.versionId,
         parentVersionId: doWorkInfo.parentVersionId,
         submitDate: doWorkInfo.submitDate.valueOf() / 1000,
+        submitCount: doWorkInfo.submitCount,
         comment: doWorkInfo.comment
     }
 
@@ -179,5 +183,69 @@ module.exports.getDoWorkInfo = function *() {
     }
     result.checkedResource = checkedResource ? checkedResource.split(',') : [];
 
+    if (requirementContent) {
+        try {
+            result.requirementContent = JSON.parse(requirementContent);
+        } catch (e) {
+            result.requirementContent = {}
+        }
+    } else {
+        result.requirementContent = null;
+    }
     this.success(result)
+}
+
+//获取答案统计
+module.exports.workAnswerStatistics = function *() {
+    var workId = this.checkQuery('workId').isNumeric().value;
+    var contentId = this.checkQuery('contentId').toInt().value;
+    this.errors && this.validateError();
+
+    var result = {}
+    var eworksFunc = this.dbContents.workSequelize.eworks.findById(workId);
+    var workContentFunc = this.dbContents.workSequelize.workContents.findById(contentId);
+
+    yield Promise.all([eworksFunc, workContentFunc]).spread((eworkInfo, workContent)=> {
+        if (!eworkInfo || !workContent || workContent.workId != workId) {
+            this.error("参数workId或者contentId错误")
+        }
+        result.checkedResource = workContent.checkedResource
+        result.totalNum = eworkInfo.totalNum
+        return workContent
+    }).then(workContent=> {
+        let sqlDoworkList =
+            `SELECT doworkId FROM doeworks WHERE workId = :workId AND moduleId = :moduleId
+             AND versionId = :versionId AND parentVersionId = :parentVersionId AND delStatus = 0 GROUP BY userId`;
+        return this.dbContents.workSequelize.query(sqlDoworkList, {
+            raw: true, type: 'SELECT', replacements: {
+                workId, moduleId: workContent.moduleId,
+                versionId: workContent.versionId, parentVersionId: workContent.parentVersionId
+            }
+        })
+    }).then(doworkIdList=> {
+        result.submitCount = doworkIdList.length;
+        if (doworkIdList.length == 0) {
+            return []
+        }
+        var doworkId = doworkIdList.map(item=>item.doworkId).toString()
+
+        var sql1 = `SELECT avg(score) as avgScore,COUNT(*) as submitCount,versionId FROM eworkanswerdetails 
+                    WHERE doworkId in (${doworkId}) GROUP BY versionId`;
+        var sql2 = `SELECT COUNT(*) as errorCount,versionId FROM eworkanswerdetails 
+                    WHERE doworkId in (${doworkId}) AND assess = 2 GROUP BY versionId`;
+
+        var task1 = this.dbContents.workSequelize.query(sql1, {raw: true, type: 'SELECT'})
+        var task2 = this.dbContents.workSequelize.query(sql2, {raw: true, type: 'SELECT'})
+
+        return Promise.all([task1, task2]).spread(function (avgInfoList, errInfoList) {
+            avgInfoList.forEach(item=> {
+                var errInfo = errInfoList.find(m=>m.versionId == item.versionId)
+                item.errorCount = errInfo ? errInfo.errorCount : 0
+            })
+            return avgInfoList
+        })
+    }).then(statistics=> {
+        result.statistics = statistics
+        this.success(result)
+    }).catch(this.error)
 }

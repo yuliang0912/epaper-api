@@ -31,7 +31,7 @@ var workDbContents = function () {
     var workDbConfig = dbConfig.epaperWork;
 
     workDbConfig.config = workDbConfig.config || {}
-    workDbConfig.config.logging = null
+    //workDbConfig.config.logging = null
 
     var workSequelize = new Sequelize(workDbConfig.database, workDbConfig.username, workDbConfig.password, workDbConfig.config);
 

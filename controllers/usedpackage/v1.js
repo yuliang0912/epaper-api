@@ -21,7 +21,7 @@ module.exports = {
 
         this.errors && this.validateError();
 
-        // TODO: 查询记录, 不存在则创建, 否则更新serviceId
+        // 查询记录, 不存在则创建, 否则更新serviceId
         let record = yield this.dbContents.workSequelize.usedpkgrecords.findOne({
             attributes: ['id', 'userId', 'brandId', 'serviceId', 'packageId'],
             where: {
@@ -78,7 +78,7 @@ module.exports = {
             resArr.push(detail);
             return this.success(resArr);
         }
-        // TODO: 查询资源包详情, 根据brandId + userId查询使用记录(packageId + serviceId)列表, updateAt倒序
+        // 查询资源包详情, 根据brandId + userId查询使用记录(packageId + serviceId)列表, updateAt倒序
         let record = yield this.dbContents.workSequelize.usedpkgrecords.findOne({
             attributes: ['id', 'userId', 'brandId', 'serviceId', 'packageId'],
             where: {
@@ -107,6 +107,33 @@ module.exports = {
         return this.error('书本无效或不存在');
     },
 
+    // /**
+    //  * 查询最近使用过的[服务+资源]列表
+    //  * 
+    //  * @returns 
+    //  */
+    // getLatestServieRecords: function* (){
+    //     let brandId = this.checkQuery('brandId').notEmpty().toInt().value;
+    //     let recordNum = this.checkQuery('recordNum').value || 4;
+    //     let serviceId = this.checkQuery('serviceId').value;
+    //     let userId = this.request.userId;
+    //     this.errors && this.validateError();
+    //     let where = {userId, brandId, status: 0};
+    //     if(serviceId) where.serviceId = serviceId;
+    //     let records = yield this.dbContents.workSequelize.usedpkgrecords.findAll({
+    //         attributes: ['userId', 'brandId', 'serviceId', 'packageId'
+    //         , [sequelize.literal('UNIX_TIMESTAMP(updateAt)'), 'updateAt']
+    //         , [sequelize.literal('UNIX_TIMESTAMP(createAt)'), 'createAt']],
+    //         where,
+    //         limit: recordNum,
+    //         order: "updateAt DESC"
+    //     });
+    //     if(records && records.length > 0){
+    //         return this.success(records);
+    //     }
+    //     return this.error('没有有效使用记录');
+    // },
+
     /**
      * 查询最近使用过的[服务+资源]列表
      * 
@@ -118,15 +145,39 @@ module.exports = {
         let serviceId = this.checkQuery('serviceId').value;
         let userId = this.request.userId;
         this.errors && this.validateError();
-        let where = {userId, brandId, status: 0};
-        if(serviceId) where.serviceId = serviceId;
-        let records = yield this.dbContents.workSequelize.usedpkgrecords.findAll({
-            attributes: ['userId', 'brandId', 'serviceId', 'packageId'
-            , [sequelize.literal('UNIX_TIMESTAMP(updateAt)'), 'updateAt']
-            , [sequelize.literal('UNIX_TIMESTAMP(createAt)'), 'createAt']],
-            where,
-            limit: recordNum,
-            order: "updateAt DESC"
+        let sql = `SELECT
+                    eworks1.publishUserId AS userId,
+                    eworks1.brandId AS brandId,
+                    eworks1.workType AS serviceId,
+                    eworkcontents.packageId AS packageId,
+                    UNIX_TIMESTAMP(eworks1.publishDate) AS publishDate
+                    FROM
+                        (select 
+                    workId
+                    , workName
+                    , publishUserId
+                    , brandId
+                    , workType
+                    , publishDate
+                    , status 
+                    from eworks 
+                    where publishUserId = ${userId} 
+                    and brandId = ${brandId} 
+                    and status = 0 
+                    @serviceId order by eworks.publishDate desc) 
+                        eworks1 
+                    INNER JOIN eworkcontents ON eworks1.workId = eworkcontents.workId
+                    GROUP BY
+                    eworkcontents.packageId
+                    ORDER BY
+                        eworks1.publishDate DESC
+                    LIMIT ${recordNum};`;
+        if(serviceId) sql = sql.replace('@serviceId', `AND eworks.workType = ${serviceId}`);
+        else sql = sql.replace('@serviceId', '');
+
+        let records = yield this.dbContents.workSequelize.query(sql, {
+            raw: true,
+            type: 'SELECT'
         });
         if(records && records.length > 0){
             return this.success(records);
