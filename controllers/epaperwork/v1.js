@@ -877,10 +877,10 @@ module.exports = {
                             scoreOfMember.userName = member.userName;
                             scoreOfMember.tabDatas = [];
                             contentList.forEach(c=>{
-                                let temp = { id: c.contentId, name: c.resourceName, score: 0};
+                                let temp = { id: c.contentId, name: c.resourceName, score: -1};
                                 let r = ls.find(element, (e)=>e.packageId==c.packageId&&e.cId==c.cId&&e.versionId==c.versionId&&e.parentVersionId==c.parentVersionId&&e.resourceType==c.resourceType);
                                 if(r){
-                                    temp.score = r.actualScore;
+                                    temp.score = r.actualScore || 0;
                                 }
                                 scoreOfMember.tabDatas.push(temp);
                             });
