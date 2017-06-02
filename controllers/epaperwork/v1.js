@@ -741,7 +741,7 @@ module.exports = {
                         let passRate = ls.filter(submitRecords, (sr)=>sr.actualScore>=(currentContent.workScore*0.6)).length / submitRecords.length;
                         let excellentRate = ls.filter(submitRecords, (sr)=>sr.actualScore>=(currentContent.workScore*0.8)).length / submitRecords.length;
                         statistics = {max, min, average, passRate, excellentRate};
-                        let sortRes = ls.sortByOrder(submitRecords, ['actualScore'], ['desc']);
+                        let sortRes = ls.sortByOrder(submitRecords, ['actualScore', 'submitDate'], ['desc', 'asc']);
                         let records = [];
                         sortRes.forEach(r=>{
                             let currentIndex = sortRes.indexOf(r) + 1;
