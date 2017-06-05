@@ -302,6 +302,10 @@ module.exports = {
             this.error('workAnswers数据格式错误!', 101)
         }
 
+        var workStatus = 1;
+        var answer = workAnswers.find(as=>as.assess===4);
+        if(answer) workStatus = 16;
+
         if (contentId > 0) {
             var workContent = yield this.dbContents.workSequelize.workContents.findById(contentId);
             if (!workContent || workContent.workId != workId) {
@@ -313,7 +317,7 @@ module.exports = {
         var doEwork = {
             workId, cid, packageId, moduleId, versionId, resourceName, parentVersionId, resourceType,
             workLong, doWorkPackageUrl, actualScore, brandId, workType, classId, userName, contentId,
-            workScore, workStatus: 1, sourceType: clientId, insteadUserName: userName
+            workScore, workStatus, sourceType: clientId, insteadUserName: userName
         };
         doEwork.userId = doEwork.insteadUserId = this.request.userId;
 
@@ -389,10 +393,14 @@ module.exports = {
             this.error('workAnswers数据格式错误!', 102)
         }
 
+        var workStatus = 4;
+        var answer = correctContents.find(as=>as.assess===4);
+        if(answer) workStatus = 16;
+
         yield this.dbContents.workSequelize.transaction(trans=> {
             var updateDoeworksFunc = this.dbContents.workSequelize.doEworks.update({
                 actualScore,
-                workStatus: 4
+                workStatus
             }, {where: {doWorkId}, transaction: trans})
 
             var updateAnswerFunc = this.dbContents.workSequelize.workAnswers.update({
@@ -681,7 +689,7 @@ module.exports = {
                     ],
                     where: {
                         workId,
-                        moduleId: {$notIn: [123, 126]}
+                        // moduleId: {$notIn: [123, 126]}
                     }
                 });
                 work.contentList = contentList;
@@ -713,6 +721,7 @@ module.exports = {
                         , [Sequelize.literal('UNIX_TIMESTAMP(submitDate)'), 'submitDate']
                         , [Sequelize.literal('CONCAT(workId)'), 'workId']
                         , 'workScore'
+                        , 'workStatus'
                         , 'actualScore'],
                         where: {
                             workId,
@@ -797,7 +806,7 @@ module.exports = {
             classInfo.classId = classId;
             classInfo.members = classMembers;
             // 查询作业内容列表
-            // 过滤掉moduleId为123, 126的模块内容
+            // 过滤掉moduleId为123, 126的模块内容, 线上作答, 视频讲解
             contentList = yield this.dbContents.workSequelize
             .workContents
             .findAll({
@@ -837,7 +846,7 @@ module.exports = {
             });
             if(receivers && receivers.length > 0){
                 // 查询作业内容提交记录列表
-                // 过滤掉moduleId为123, 126的模块内容
+                // 过滤掉moduleId为123, 126的模块内容, 线上作答, 视频讲解
                 submitRecords = yield this.dbContents.workSequelize
                 .doEworks
                 .findAll({
@@ -848,6 +857,7 @@ module.exports = {
                     , [Sequelize.literal('UNIX_TIMESTAMP(submitDate)'), 'submitDate']
                     , [Sequelize.literal('CONCAT(workId)'), 'workId']
                     , 'workScore'
+                    , 'workStatus'
                     , 'actualScore'],
                     where: {
                         workId,
