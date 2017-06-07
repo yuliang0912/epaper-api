@@ -725,7 +725,7 @@ module.exports = {
                         , 'actualScore'],
                         where: {
                             workId,
-                            packageId: currentContent.packageId,
+                            // packageId: currentContent.packageId,
                             cId: currentContent.cId,
                             moduleId: currentContent.moduleId,
                             versionId: currentContent.versionId,
