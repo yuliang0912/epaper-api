@@ -30,7 +30,7 @@ module.exports.getPublishWorkRecordsForWeiXin = function *() {
 
         var eworkContentFunc = this.dbContents.workSequelize.workContents.findAll({
             raw: true,
-            attributes: ['contentId', [Sequelize.literal('CONCAT(workId)'), 'workId'], 'resourceType', 'parentVersionId', 'versionId', 'resourceName'],
+            attributes: ['contentId', [Sequelize.literal('CONCAT(workId)'), 'workId'], 'resourceType', 'moduleId', 'parentVersionId', 'versionId', 'resourceName', 'requirementContent'],
             where: {workId: {$in: workIds}}
         });
 
@@ -50,6 +50,11 @@ module.exports.getPublishWorkRecordsForWeiXin = function *() {
             return m.workId == item.workId && m.resourceType == item.resourceType
                 && m.parentVersionId == item.parentVersionId && m.versionId == item.versionId
         })
+        try {
+            item.requirementContent = JSON.parse(item.requirementContent);
+        } catch (e) {
+            item.requirementContent = {}
+        }
         item.submitCount = model ? model.submitCount : 0;
     })
 

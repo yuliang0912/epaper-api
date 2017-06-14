@@ -4,7 +4,7 @@
     "password": "root",
     "database": "cw_epaper_work",
     "config": {
-      "host": "192.168.1.64",
+      "host": "192.168.1.49",
       "port": 3306,
       "dialect": "mysql",
       "timezone": "+08:00",
@@ -24,7 +24,7 @@
     "password": "root",
     "database": "cw_epaper_msg",
     "config": {
-      "host": "192.168.1.64",
+      "host": "192.168.1.49",
       "port": 3306,
       "dialect": "mysql",
       "timezone": "+08:00",
